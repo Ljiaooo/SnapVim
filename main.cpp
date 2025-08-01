@@ -207,7 +207,7 @@ void PasteTextToPreviousFocus(const wchar_t* text) {
 }
 
 // Main code
-int main(int, char**)
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     // Make process DPI aware and obtain main monitor scale
     ImGui_ImplWin32_EnableDpiAwareness();
@@ -279,19 +279,20 @@ int main(int, char**)
 
     // load fonts
     ImFont* font = nullptr;
-    ImFontConfig config_en;
     float fontSize = FONT_SIZE * main_scale; // Scale font size based on DPI
-    config_en.MergeMode = false;
 
-    const char* localAppData = getenv("LOCALAPPDATA");
+    ImFontConfig config_en;
+    config_en.MergeMode = false;
+    char* localAppData = nullptr;
+    _dupenv_s(&localAppData, nullptr, "LOCALAPPDATA");
     char userFontPath[MAX_PATH];
-    snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\NotoSans-Regular.ttf", localAppData);
+    snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\%s", localAppData, ENGLISH_FONT);
     font = io.Fonts->AddFontFromFileTTF(userFontPath, fontSize, &config_en, io.Fonts->GetGlyphRangesDefault());
 
     // merge Chinese font with English font
     ImFontConfig config_zh;
     config_zh.MergeMode = true;
-    snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\NotoSansSC-Regular.ttf", localAppData);
+    snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\%s", localAppData, CHINESE_FONT);
     io.Fonts->AddFontFromFileTTF(userFontPath, fontSize, &config_zh, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
     // fallback to Consolas font
@@ -333,7 +334,7 @@ int main(int, char**)
 
         // hello world
         ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-        draw_list->AddText(ImVec2(220, 150), IM_COL32(255, 255, 255, 255), "Hello World!\n你好世界！\n");
+        draw_list->AddText(ImVec2(220, 150), IM_COL32(255, 255, 255, 255), "Hello World!\n你好世界！\nHello SnapVim!\n");
 
 
 
@@ -618,7 +619,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         nid.uCallbackMessage = WM_TRAYICON;
         nid.hIcon = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_TRAYICON));
-        wcscpy(nid.szTip, L"Snap Vim");
+        wcscpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(nid.szTip[0]), L"Snap Vim");
         Shell_NotifyIcon(NIM_ADD, &nid);
         break;
 
