@@ -42,6 +42,7 @@ static const int APP_SRV_HEAP_SIZE = 64;
 
 // Global value
 static HWND g_previousFocus = nullptr;
+static char* g_textBuffer = nullptr;
 
 struct FrameContext
 {
@@ -161,7 +162,7 @@ void EnableWindowRoundedCorners(HWND hwnd)
     DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
 }
 
-void PasteTextToPreviousFocus(const wchar_t* text) {
+void PasteTextToPreviousFocus(const char* text) {
     if (!IsWindow(g_previousFocus))
         return;
 
@@ -169,18 +170,7 @@ void PasteTextToPreviousFocus(const wchar_t* text) {
     SetForegroundWindow(g_previousFocus);
 
     // Set clipboard content
-    if (OpenClipboard(nullptr)) {
-        EmptyClipboard();
-        size_t size = (wcslen(text) + 1) * sizeof(wchar_t);
-        HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, size);
-        if (hGlob) {
-            void* pData = GlobalLock(hGlob);
-            memcpy(pData, text, size);
-            GlobalUnlock(hGlob);
-            SetClipboardData(CF_UNICODETEXT, hGlob);
-        }
-        CloseClipboard();
-    }
+    ImGui::SetClipboardText(text);
 
     // Simulate Ctrl+V paste
     INPUT inputs[4] = {};
@@ -227,6 +217,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     HideWindowDecorations(hwnd); // Hide window decorations for a cleaner look
     EnableWindowRoundedCorners(hwnd); // Enable rounded corners for the window
     SetLayeredWindowAttributes(hwnd, 0, TRANSPARENT_VALUE, LWA_ALPHA); // Set window transparency (0-255, 255 is fully opaque)
+
+    // allocate text buffer, max 10000 characters
+    g_textBuffer = (char*)ImGui::MemAlloc(10000 * sizeof(ImWchar));
+    memset(g_textBuffer, 0, 10000 * sizeof(ImWchar));
 
     // register hotkey
     if (!RegisterHotKey(hwnd, 1, MOD_CONTROL, VK_SPACE)) {
@@ -333,8 +327,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         
 
         // hello world
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-        draw_list->AddText(ImVec2(220, 150), IM_COL32(255, 255, 255, 255), "Hello World!\n你好世界！\nHello SnapVim!\n");
+        ImGui::InputTextMultiline("", g_textBuffer, 10000);
+        //ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+        //draw_list->AddText(ImVec2(220, 150), IM_COL32(255, 255, 255, 255), "Hello World!\n你好世界！\nHello SnapVim!\n");
 
 
 
@@ -685,7 +680,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             if (IsWindowVisible(hWnd))
             {
-                PasteTextToPreviousFocus(L"This is a test paste from Snap Vim! 你好世界！");
+                PasteTextToPreviousFocus(g_textBuffer);
                 ShowWindow(hWnd, SW_HIDE);
             }
             else {
