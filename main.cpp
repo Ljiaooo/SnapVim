@@ -1,5 +1,3 @@
-// Dear ImGui: standalone example application for DirectX 12
-
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
 // - Getting Started      https://dearimgui.com/getting-started
@@ -325,12 +323,22 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         ImGui::NewFrame();
 
         
+        // editor
+        ImGuiWindowFlags window_flags = 
+        ImGuiWindowFlags_NoDecoration |      // 无装饰
+        ImGuiWindowFlags_NoBackground |      // 无背景
+        ImGuiWindowFlags_NoMove |            // 不可移动
+        ImGuiWindowFlags_NoResize |          // 不可调整大小
+        ImGuiWindowFlags_NoSavedSettings |   // 不保存设置
+        ImGuiWindowFlags_NoFocusOnAppearing |// 出现时不获得焦点
+        ImGuiWindowFlags_NoBringToFrontOnFocus; // 焦点时不置前
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
-        // hello world
-        ImGui::InputTextMultiline("", g_textBuffer, 10000);
-        //ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-        //draw_list->AddText(ImVec2(220, 150), IM_COL32(255, 255, 255, 255), "Hello World!\n你好世界！\nHello SnapVim!\n");
-
+        if (ImGui::Begin("InvisibleWindow", nullptr, window_flags)) {
+           ImGui::InputTextMultiline("", g_textBuffer, 10000, ImVec2(winWidth - 15, winHeight - 15));
+        }
+        ImGui::End();
 
 
 
