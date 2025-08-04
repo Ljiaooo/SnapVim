@@ -26,8 +26,8 @@ set(SOURCES
     main.cpp
     resources.rc
     #imgui_demo.cpp
-    #snapvim.cpp
-    #snapvim.h
+    snapvim.cpp
+    snapvim.h
 )
 
 add_executable(SnapVim ${SOURCES})
