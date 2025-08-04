@@ -294,6 +294,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
     ImVec4 clear_color = BACKGROUND_COLOR; // Set background color from config
 
+    ImGuiWindowFlags window_flags = 
+    ImGuiWindowFlags_NoDecoration |      
+    ImGuiWindowFlags_NoBackground |      
+    ImGuiWindowFlags_NoMove |            
+    ImGuiWindowFlags_NoResize |          
+    ImGuiWindowFlags_NoSavedSettings |   
+    ImGuiWindowFlags_NoFocusOnAppearing |
+    ImGuiWindowFlags_NoBringToFrontOnFocus |
+    ImGuiWindowFlags_NoBackground;
+
+
     // Main loop
     bool done = false;
     while (!done)
@@ -326,7 +337,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
         
 
-        SnapVim::renderSnapVimEditor(g_textBuffer, winWidth, winHeight);
+        SnapVim::renderSnapVimEditor(g_textBuffer, winWidth, winHeight, window_flags);
 
 
         // Rendering

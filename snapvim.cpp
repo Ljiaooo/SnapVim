@@ -1,21 +1,10 @@
 #include "snapvim.h"
-#include "imgui.h"
 #include "third_party/imgui/imgui.h"
 
 namespace SnapVim {
 
-void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight)
+void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
 {
-    ImGuiWindowFlags window_flags = 
-    ImGuiWindowFlags_NoDecoration |      
-    ImGuiWindowFlags_NoBackground |      
-    ImGuiWindowFlags_NoMove |            
-    ImGuiWindowFlags_NoResize |          
-    ImGuiWindowFlags_NoSavedSettings |   
-    ImGuiWindowFlags_NoFocusOnAppearing |
-    ImGuiWindowFlags_NoBringToFrontOnFocus |
-    ImGuiWindowFlags_NoBackground;
-
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
