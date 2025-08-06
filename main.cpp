@@ -11,7 +11,6 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
 #include "resources.h"
-#include "svimconfig.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <tchar.h>
@@ -254,6 +253,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
     style.Colors[ImGuiCol_FrameBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f); // Set frame background color to transparent
+    ImVec2 padding = style.WindowPadding;
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -302,7 +302,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiWindowFlags_NoSavedSettings |   
     ImGuiWindowFlags_NoFocusOnAppearing |
     ImGuiWindowFlags_NoBringToFrontOnFocus |
-    ImGuiWindowFlags_NoBackground;
+    ImGuiWindowFlags_NoBackground |
+    ImGuiWindowFlags_NoNav;
 
 
     // Main loop
@@ -337,7 +338,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
         
 
-        SnapVim::renderSnapVimEditor(g_textBuffer, winWidth, winHeight, window_flags);
+        SnapVim::renderSnapVimEditor(g_textBuffer, winWidth - padding.x * 2, winHeight - padding.y * 2, window_flags);
 
 
         // Rendering
