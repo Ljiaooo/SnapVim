@@ -1,14 +1,19 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
+
 #include "svimconfig.h"
 #endif
 
 #include "snapvim.h"
 #include "imgui_internal.h"
-#include "third_party/imgui/imgui.h"
 
 
 namespace SnapVim {
+
+void initVim()
+{
+
+}
 
 void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
 {

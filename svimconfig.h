@@ -1,5 +1,17 @@
-#pragma once
+/**
+ * Not Implemented Features:
+ * - vim scrolling
+ * - vim search
+ * - vim command mode
+ * - visual mode multi-cursor
+ * 
+ * 
+ * 
+ * 
+ *
+ */
 
+#pragma once
 #define FONT_SIZE 25.0f
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 400
