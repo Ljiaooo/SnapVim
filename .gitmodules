@@ -1,0 +1,3 @@
+[submodule "external/libvim"]
+	path = external/libvim
+	url = https://github.com/Ljiaooo/libvim.git
