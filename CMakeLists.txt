@@ -48,4 +48,5 @@ target_link_libraries(SnapVim PRIVATE
     d3dcompiler
     dxgi
     dwmapi
+    libvim_static
 )
