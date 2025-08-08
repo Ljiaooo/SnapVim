@@ -1,18 +1,43 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
-
-#include "svimconfig.h"
+#include <vim.h>
 #endif
 
+#include <windows.h>
+#include <lm.h>
 #include "snapvim.h"
 #include "imgui_internal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#include <libvim.h>
+}
+#endif
 
 namespace SnapVim {
 
+buf_T* buffer0 = nullptr;
+buf_T* buffer1 = nullptr;
+buf_T* currentBuffer = nullptr;
+
 void initVim()
 {
+    vimInit(0, nullptr);
+    vimOptionSetInsertSpaces(TRUE);
+    vimOptionSetTabSize(2);
 
+    // initially create two buffers, one for the current text and one for the history
+    buffer0 = vimBufferOpen((char_u*)"test.txt", 1, 0);
+    buffer1 = vimBufferNew(0);
+    currentBuffer = buffer0;
+
+    vimInput((char_u*)("i"));
+    vimInput((char_u*)("i"));
+    vimInput((char_u*)("i"));
+    vimInput((char_u*)("i"));
+    vimInput((char_u*)("i"));
+    char_u* line = vimBufferGetLine(currentBuffer, 0);
+    printf("Initial buffer line: %s\n", line);
 }
 
 void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
@@ -26,28 +51,25 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
     ImGui::End();
 }
 
-//bool snapVimEditor(const char* label, char* buf, int buf_size, const ImVec2& size_arg, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* callback_user_data)
+//bool snapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
 //{
 //    using namespace ImGui;
 //    ImGuiWindow* window = GetCurrentWindow();
 //
 //    IM_ASSERT(buf != NULL && buf_size >= 0);
-//    IM_ASSERT(!((flags & ImGuiInputTextFlags_CallbackHistory) && (flags & ImGuiInputTextFlags_Multiline)));        // Can't use both together (they both use up/down keys)
-//    IM_ASSERT(!((flags & ImGuiInputTextFlags_CallbackCompletion) && (flags & ImGuiInputTextFlags_AllowTabInput))); // Can't use both together (they both use tab key)
-//    IM_ASSERT(!((flags & ImGuiInputTextFlags_ElideLeft) && (flags & ImGuiInputTextFlags_Multiline)));               // Multiline will not work with left-trimming
 //
 //    ImGuiContext& g = *GImGui;
 //    ImGuiIO& io = g.IO;
 //    const ImGuiStyle& style = g.Style;
 //
 //    const bool RENDER_SELECTION_WHEN_INACTIVE = false;
-//    const bool is_multiline = (flags & ImGuiInputTextFlags_Multiline) != 0;
+//    const char* label = "###SnapVim";
+//    int flags = 0;
 //
-//    if (is_multiline) // Open group before calling GetID() because groups tracks id created within their scope (including the scrollbar)
-//        BeginGroup();
+//    BeginGroup();
 //    const ImGuiID id = window->GetID(label);
 //    const ImVec2 label_size = CalcTextSize(label, NULL, true);
-//    const ImVec2 frame_size = CalcItemSize(size_arg, CalcItemWidth(), (is_multiline ? g.FontSize * 8.0f : label_size.y) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
+//    const ImVec2 frame_size = CalcItemSize(size_arg, CalcItemWidth(), ( g.FontSize * 8.0f) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
 //    const ImVec2 total_size = ImVec2(frame_size.x + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), frame_size.y);
 //
 //    const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + frame_size);
@@ -56,55 +78,44 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    ImGuiWindow* draw_window = window;
 //    ImVec2 inner_size = frame_size;
 //    ImGuiLastItemData item_data_backup;
-//    if (is_multiline)
+//    ImVec2 backup_pos = window->DC.CursorPos;
+//    ItemSize(total_bb, style.FramePadding.y);
+//    if (!ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
 //    {
-//        ImVec2 backup_pos = window->DC.CursorPos;
-//        ItemSize(total_bb, style.FramePadding.y);
-//        if (!ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
-//        {
-//            EndGroup();
-//            return false;
-//        }
-//        item_data_backup = g.LastItemData;
-//        window->DC.CursorPos = backup_pos;
-//
-//        // Prevent NavActivation from Tabbing when our widget accepts Tab inputs: this allows cycling through widgets without stopping.
-//        if (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_FromTabbing) && (flags & ImGuiInputTextFlags_AllowTabInput))
-//            g.NavActivateId = 0;
-//
-//        // Prevent NavActivate reactivating in BeginChild() when we are already active.
-//        const ImGuiID backup_activate_id = g.NavActivateId;
-//        if (g.ActiveId == id) // Prevent reactivation
-//            g.NavActivateId = 0;
-//
-//        // We reproduce the contents of BeginChildFrame() in order to provide 'label' so our window internal data are easier to read/debug.
-//        PushStyleColor(ImGuiCol_ChildBg, style.Colors[ImGuiCol_FrameBg]);
-//        PushStyleVar(ImGuiStyleVar_ChildRounding, style.FrameRounding);
-//        PushStyleVar(ImGuiStyleVar_ChildBorderSize, style.FrameBorderSize);
-//        PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); // Ensure no clip rect so mouse hover can reach FramePadding edges
-//        bool child_visible = BeginChildEx(label, id, frame_bb.GetSize(), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoMove);
-//        g.NavActivateId = backup_activate_id;
-//        PopStyleVar(3);
-//        PopStyleColor();
-//        if (!child_visible)
-//        {
-//            EndChild();
-//            EndGroup();
-//            return false;
-//        }
-//        draw_window = g.CurrentWindow; // Child window
-//        draw_window->DC.NavLayersActiveMaskNext |= (1 << draw_window->DC.NavLayerCurrent); // This is to ensure that EndChild() will display a navigation highlight so we can "enter" into it.
-//        draw_window->DC.CursorPos += style.FramePadding;
-//        inner_size.x -= draw_window->ScrollbarSizes.x;
+//        EndGroup();
+//        return false;
 //    }
-//    else
+//    item_data_backup = g.LastItemData;
+//    window->DC.CursorPos = backup_pos;
+//
+//    // Prevent NavActivation from Tabbing when our widget accepts Tab inputs: this allows cycling through widgets without stopping.
+//    if (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_FromTabbing))
+//        g.NavActivateId = 0;
+//
+//    // Prevent NavActivate reactivating in BeginChild() when we are already active.
+//    const ImGuiID backup_activate_id = g.NavActivateId;
+//    if (g.ActiveId == id) // Prevent reactivation
+//        g.NavActivateId = 0;
+//
+//    // We reproduce the contents of BeginChildFrame() in order to provide 'label' so our window internal data are easier to read/debug.
+//    PushStyleColor(ImGuiCol_ChildBg, style.Colors[ImGuiCol_FrameBg]);
+//    PushStyleVar(ImGuiStyleVar_ChildRounding, style.FrameRounding);
+//    PushStyleVar(ImGuiStyleVar_ChildBorderSize, style.FrameBorderSize);
+//    PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); // Ensure no clip rect so mouse hover can reach FramePadding edges
+//    bool child_visible = BeginChildEx(label, id, frame_bb.GetSize(), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoMove);
+//    g.NavActivateId = backup_activate_id;
+//    PopStyleVar(3);
+//    PopStyleColor();
+//    if (!child_visible)
 //    {
-//        // Support for internal ImGuiInputTextFlags_MergedItem flag, which could be redesigned as an ItemFlags if needed (with test performed in ItemAdd)
-//        ItemSize(total_bb, style.FramePadding.y);
-//        if (!(flags & ImGuiInputTextFlags_MergedItem))
-//            if (!ItemAdd(total_bb, id, &frame_bb, ImGuiItemFlags_Inputable))
-//                return false;
+//        EndChild();
+//        EndGroup();
+//        return false;
 //    }
+//    draw_window = g.CurrentWindow; // Child window
+//    draw_window->DC.NavLayersActiveMaskNext |= (1 << draw_window->DC.NavLayerCurrent); // This is to ensure that EndChild() will display a navigation highlight so we can "enter" into it.
+//    draw_window->DC.CursorPos += style.FramePadding;
+//    inner_size.x -= draw_window->ScrollbarSizes.x;
 //
 //    // Ensure mouse cursor is set even after switching to keyboard/gamepad mode. May generalize further? (#6417)
 //    bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags | ImGuiItemFlags_NoNavDisableMouseHover);
@@ -116,27 +127,20 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    // We are only allowed to access the state if we are already the active widget.
 //    ImGuiInputTextState* state = GetInputTextState(id);
 //
-//    if (g.LastItemData.ItemFlags & ImGuiItemFlags_ReadOnly)
-//        flags |= ImGuiInputTextFlags_ReadOnly;
-//    const bool is_readonly = (flags & ImGuiInputTextFlags_ReadOnly) != 0;
-//    const bool is_password = (flags & ImGuiInputTextFlags_Password) != 0;
 //    const bool is_undoable = (flags & ImGuiInputTextFlags_NoUndoRedo) == 0;
-//    const bool is_resizable = (flags & ImGuiInputTextFlags_CallbackResize) != 0;
-//    if (is_resizable)
-//        IM_ASSERT(callback != NULL); // Must provide a callback if you set the ImGuiInputTextFlags_CallbackResize flag!
 //
 //    const bool input_requested_by_nav = (g.ActiveId != id) && ((g.NavActivateId == id) && ((g.NavActivateFlags & ImGuiActivateFlags_PreferInput) || (g.NavInputSource == ImGuiInputSource_Keyboard)));
 //
 //    const bool user_clicked = hovered && io.MouseClicked[0];
-//    const bool user_scroll_finish = is_multiline && state != NULL && g.ActiveId == 0 && g.ActiveIdPreviousFrame == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
-//    const bool user_scroll_active = is_multiline && state != NULL && g.ActiveId == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
+//    const bool user_scroll_finish = state != NULL && g.ActiveId == 0 && g.ActiveIdPreviousFrame == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
+//    const bool user_scroll_active = state != NULL && g.ActiveId == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
 //    bool clear_active_id = false;
 //    bool select_all = false;
 //
-//    float scroll_y = is_multiline ? draw_window->Scroll.y : FLT_MAX;
+//    float scroll_y = draw_window->Scroll.y;
 //
 //    const bool init_reload_from_user_buf = (state != NULL && state->WantReloadUserBuf);
-//    const bool init_changed_specs = (state != NULL && state->Stb->single_line != !is_multiline); // state != NULL means its our state.
+//    const bool init_changed_specs = (state != NULL );// state != NULL means its our state.
 //    const bool init_make_active = (user_clicked || user_scroll_finish || input_requested_by_nav);
 //    const bool init_state = (init_make_active || user_scroll_active);
 //    if (init_reload_from_user_buf)
@@ -144,7 +148,6 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        int new_len = (int)ImStrlen(buf);
 //        IM_ASSERT(new_len + 1 <= buf_size && "Is your input buffer properly zero-terminated?");
 //        state->WantReloadUserBuf = false;
-//        InputTextReconcileUndoState(state, state->TextA.Data, state->TextLen, buf, new_len);
 //        state->TextA.resize(buf_size + 1); // we use +1 to make sure that .Data is always pointing to at least an empty string.
 //        state->TextLen = new_len;
 //        memcpy(state->TextA.Data, buf, state->TextLen + 1);
@@ -177,36 +180,19 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        // Start edition
 //        state->ID = id;
 //        state->TextLen = buf_len;
-//        if (!is_readonly)
-//        {
-//            state->TextA.resize(buf_size + 1); // we use +1 to make sure that .Data is always pointing to at least an empty string.
-//            memcpy(state->TextA.Data, buf, state->TextLen + 1);
-//        }
+//        state->TextA.resize(buf_size + 1); // we use +1 to make sure that .Data is always pointing to at least an empty string.
+//        memcpy(state->TextA.Data, buf, state->TextLen + 1);
 //
 //        // Find initial scroll position for right alignment
 //        state->Scroll = ImVec2(0.0f, 0.0f);
-//        if (flags & ImGuiInputTextFlags_ElideLeft)
-//            state->Scroll.x += ImMax(0.0f, CalcTextSize(buf).x - frame_size.x + style.FramePadding.x * 2.0f);
 //
 //        // Recycle existing cursor/selection/undo stack but clamp position
 //        // Note a single mouse click will override the cursor/position immediately by calling stb_textedit_click handler.
 //        if (recycle_state)
 //            state->CursorClamp();
 //        else
-//            stb_textedit_initialize_state(state->Stb, !is_multiline);
+//            stb_textedit_initialize_state(state->Stb, false);
 //
-//        if (!is_multiline)
-//        {
-//            if (flags & ImGuiInputTextFlags_AutoSelectAll)
-//                select_all = true;
-//            if (input_requested_by_nav && (!recycle_state || !(g.NavActivateFlags & ImGuiActivateFlags_TryToPreserveState)))
-//                select_all = true;
-//            if (user_clicked && io.KeyCtrl)
-//                select_all = true;
-//        }
-//
-//        if (flags & ImGuiInputTextFlags_AlwaysOverwrite)
-//            state->Stb->insert_mode = 1; // stb field name is indeed incorrect (see #2863)
 //    }
 //
 //    const bool is_osx = io.ConfigMacOSXBehaviors;
@@ -227,33 +213,19 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        if (user_clicked)
 //            SetKeyOwner(ImGuiKey_MouseLeft, id);
 //        g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
-//        if (is_multiline || (flags & ImGuiInputTextFlags_CallbackHistory))
-//        {
-//            g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Up) | (1 << ImGuiDir_Down);
-//            SetKeyOwner(ImGuiKey_UpArrow, id);
-//            SetKeyOwner(ImGuiKey_DownArrow, id);
-//        }
-//        if (is_multiline)
-//        {
-//            SetKeyOwner(ImGuiKey_PageUp, id);
-//            SetKeyOwner(ImGuiKey_PageDown, id);
-//        }
+//        SetKeyOwner(ImGuiKey_PageUp, id);
+//        SetKeyOwner(ImGuiKey_PageDown, id);
 //        // FIXME: May be a problem to always steal Alt on OSX, would ideally still allow an uninterrupted Alt down-up to toggle menu
 //        if (is_osx)
 //            SetKeyOwner(ImGuiMod_Alt, id);
 //
 //        // Expose scroll in a manner that is agnostic to us using a child window
-//        if (is_multiline && state != NULL)
+//        if (state != NULL)
 //            state->Scroll.y = draw_window->Scroll.y;
 //
-//        // Read-only mode always ever read from source buffer. Refresh TextLen when active.
-//        if (is_readonly && state != NULL)
-//            state->TextLen = (int)ImStrlen(buf);
-//        //if (is_readonly && state != NULL)
-//        //    state->TextA.clear(); // Uncomment to facilitate debugging, but we otherwise prefer to keep/amortize th allocation.
 //    }
 //    if (state != NULL)
-//        state->TextSrc = is_readonly ? buf : state->TextA.Data;
+//        state->TextSrc = state->TextA.Data;
 //
 //    // We have an edge case if ActiveId was set through another widget (e.g. widget being swapped), clear id immediately (don't wait until the end of the function)
 //    if (g.ActiveId == id && state == NULL)
@@ -270,7 +242,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    bool validated = false;
 //
 //    // Select the buffer to render.
-//    const bool buf_display_from_state = (render_cursor || render_selection || g.ActiveId == id) && !is_readonly && state;
+//    const bool buf_display_from_state = (render_cursor || render_selection || g.ActiveId == id) && state;
 //
 //    // Process mouse inputs and character inputs
 //    if (g.ActiveId == id)
@@ -286,7 +258,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //
 //        // Edit in progress
 //        const float mouse_x = (io.MousePos.x - frame_bb.Min.x - style.FramePadding.x) + state->Scroll.x;
-//        const float mouse_y = (is_multiline ? (io.MousePos.y - draw_window->DC.CursorPos.y) : (g.FontSize * 0.5f));
+//        const float mouse_y = (io.MousePos.y - draw_window->DC.CursorPos.y);
 //
 //        if (select_all)
 //        {
@@ -319,7 +291,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //                state->OnKeyPressed(STB_TEXTEDIT_K_LINESTART);
 //                state->OnKeyPressed(STB_TEXTEDIT_K_LINEEND | STB_TEXTEDIT_K_SHIFT);
 //                state->OnKeyPressed(STB_TEXTEDIT_K_RIGHT | STB_TEXTEDIT_K_SHIFT);
-//                if (!is_eol && is_multiline)
+//                if (!is_eol)
 //                {
 //                    ImSwap(state->Stb->select_start, state->Stb->select_end);
 //                    state->Stb->cursor = state->Stb->select_end;
@@ -350,7 +322,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //
 //        // We expect backends to emit a Tab key but some also emit a Tab character which we ignore (#2467, #1336)
 //        // (For Tab and Enter: Win32/SFML/Allegro are sending both keys and chars, GLFW and SDL are only sending keys. For Space they all send all threes)
-//        if ((flags & ImGuiInputTextFlags_AllowTabInput) && !is_readonly)
+//        if ((flags & ImGuiInputTextFlags_AllowTabInput))
 //        {
 //            if (Shortcut(ImGuiKey_Tab, ImGuiInputFlags_Repeat, id))
 //            {
@@ -371,7 +343,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (is_osx && io.KeyCtrl);
 //        if (io.InputQueueCharacters.Size > 0)
 //        {
-//            if (!ignore_char_inputs && !is_readonly && !input_requested_by_nav)
+//            if (!ignore_char_inputs && !input_requested_by_nav)
 //                for (int n = 0; n < io.InputQueueCharacters.Size; n++)
 //                {
 //                    // Insert character if they pass filtering
@@ -403,11 +375,11 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        // Using Shortcut() with ImGuiInputFlags_RouteFocused (default policy) to allow routing operations for other code (e.g. calling window trying to use CTRL+A and CTRL+B: former would be handled by InputText)
 //        // Otherwise we could simply assume that we own the keys as we are active.
 //        const ImGuiInputFlags f_repeat = ImGuiInputFlags_Repeat;
-//        const bool is_cut   = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_X, f_repeat, id) || Shortcut(ImGuiMod_Shift | ImGuiKey_Delete, f_repeat, id)) && !is_readonly && !is_password && (!is_multiline || state->HasSelection());
-//        const bool is_copy  = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_C, 0,        id) || Shortcut(ImGuiMod_Ctrl  | ImGuiKey_Insert, 0,        id)) && !is_password && (!is_multiline || state->HasSelection());
-//        const bool is_paste = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_V, f_repeat, id) || Shortcut(ImGuiMod_Shift | ImGuiKey_Insert, f_repeat, id)) && !is_readonly;
-//        const bool is_undo  = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, f_repeat, id)) && !is_readonly && is_undoable;
-//        const bool is_redo =  (Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, f_repeat, id) || Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, f_repeat, id)) && !is_readonly && is_undoable;
+//        const bool is_cut   = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_X, f_repeat, id) || Shortcut(ImGuiMod_Shift | ImGuiKey_Delete, f_repeat, id)) && (state->HasSelection());
+//        const bool is_copy  = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_C, 0,        id) || Shortcut(ImGuiMod_Ctrl  | ImGuiKey_Insert, 0,        id)) && (state->HasSelection());
+//        const bool is_paste = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_V, f_repeat, id) || Shortcut(ImGuiMod_Shift | ImGuiKey_Insert, f_repeat, id));
+//        const bool is_undo  = (Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, f_repeat, id))  && is_undoable;
+//        const bool is_redo =  (Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, f_repeat, id) || Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z, f_repeat, id))  && is_undoable;
 //        const bool is_select_all = Shortcut(ImGuiMod_Ctrl | ImGuiKey_A, 0, id);
 //
 //        // We allow validate/cancel with Nav source (gamepad) to makes it easier to undo an accidental NavInput press with no keyboard wired, but otherwise it isn't very useful.
@@ -420,13 +392,13 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        // FIXME-OSX: Missing support for Alt(option)+Right/Left = go to end of line, or next line if already in end of line.
 //        if (IsKeyPressed(ImGuiKey_LeftArrow))                        { state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINESTART : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDLEFT : STB_TEXTEDIT_K_LEFT) | k_mask); }
 //        else if (IsKeyPressed(ImGuiKey_RightArrow))                  { state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINEEND : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDRIGHT : STB_TEXTEDIT_K_RIGHT) | k_mask); }
-//        else if (IsKeyPressed(ImGuiKey_UpArrow) && is_multiline)     { if (io.KeyCtrl) SetScrollY(draw_window, ImMax(draw_window->Scroll.y - g.FontSize, 0.0f)); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTSTART : STB_TEXTEDIT_K_UP) | k_mask); }
-//        else if (IsKeyPressed(ImGuiKey_DownArrow) && is_multiline)   { if (io.KeyCtrl) SetScrollY(draw_window, ImMin(draw_window->Scroll.y + g.FontSize, GetScrollMaxY())); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTEND : STB_TEXTEDIT_K_DOWN) | k_mask); }
-//        else if (IsKeyPressed(ImGuiKey_PageUp) && is_multiline)      { state->OnKeyPressed(STB_TEXTEDIT_K_PGUP | k_mask); scroll_y -= row_count_per_page * g.FontSize; }
-//        else if (IsKeyPressed(ImGuiKey_PageDown) && is_multiline)    { state->OnKeyPressed(STB_TEXTEDIT_K_PGDOWN | k_mask); scroll_y += row_count_per_page * g.FontSize; }
+//        else if (IsKeyPressed(ImGuiKey_UpArrow))     { if (io.KeyCtrl) SetScrollY(draw_window, ImMax(draw_window->Scroll.y - g.FontSize, 0.0f)); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTSTART : STB_TEXTEDIT_K_UP) | k_mask); }
+//        else if (IsKeyPressed(ImGuiKey_DownArrow))   { if (io.KeyCtrl) SetScrollY(draw_window, ImMin(draw_window->Scroll.y + g.FontSize, GetScrollMaxY())); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTEND : STB_TEXTEDIT_K_DOWN) | k_mask); }
+//        else if (IsKeyPressed(ImGuiKey_PageUp))      { state->OnKeyPressed(STB_TEXTEDIT_K_PGUP | k_mask); scroll_y -= row_count_per_page * g.FontSize; }
+//        else if (IsKeyPressed(ImGuiKey_PageDown))    { state->OnKeyPressed(STB_TEXTEDIT_K_PGDOWN | k_mask); scroll_y += row_count_per_page * g.FontSize; }
 //        else if (IsKeyPressed(ImGuiKey_Home))                        { state->OnKeyPressed(io.KeyCtrl ? STB_TEXTEDIT_K_TEXTSTART | k_mask : STB_TEXTEDIT_K_LINESTART | k_mask); }
 //        else if (IsKeyPressed(ImGuiKey_End))                         { state->OnKeyPressed(io.KeyCtrl ? STB_TEXTEDIT_K_TEXTEND | k_mask : STB_TEXTEDIT_K_LINEEND | k_mask); }
-//        else if (IsKeyPressed(ImGuiKey_Delete) && !is_readonly && !is_cut)
+//        else if (IsKeyPressed(ImGuiKey_Delete) && !is_cut)
 //        {
 //            if (!state->HasSelection())
 //            {
@@ -436,7 +408,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            }
 //            state->OnKeyPressed(STB_TEXTEDIT_K_DELETE | k_mask);
 //        }
-//        else if (IsKeyPressed(ImGuiKey_Backspace) && !is_readonly)
+//        else if (IsKeyPressed(ImGuiKey_Backspace))
 //        {
 //            if (!state->HasSelection())
 //            {
@@ -451,15 +423,12 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        {
 //            // Determine if we turn Enter into a \n character
 //            bool ctrl_enter_for_new_line = (flags & ImGuiInputTextFlags_CtrlEnterForNewLine) != 0;
-//            if (!is_multiline || is_gamepad_validate || (ctrl_enter_for_new_line && !io.KeyCtrl) || (!ctrl_enter_for_new_line && io.KeyCtrl))
+//            if (is_gamepad_validate || (ctrl_enter_for_new_line && !io.KeyCtrl) || (!ctrl_enter_for_new_line && io.KeyCtrl))
 //            {
 //                validated = true;
-//                if (io.ConfigInputTextEnterKeepActive && !is_multiline)
-//                    state->SelectAll(); // No need to scroll
-//                else
-//                    clear_active_id = true;
+//                clear_active_id = true;
 //            }
-//            else if (!is_readonly)
+//            else
 //            {
 //                unsigned int c = '\n'; // Insert new line
 //                if (InputTextFilterCharacter(&g, &c, flags, callback, callback_user_data))
@@ -557,7 +526,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    if (g.ActiveId == id)
 //    {
 //        IM_ASSERT(state != NULL);
-//        if (revert_edit && !is_readonly)
+//        if (revert_edit)
 //        {
 //            if (flags & ImGuiInputTextFlags_EscapeClearsAll)
 //            {
@@ -634,7 +603,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //                    callback_data.UserData = callback_user_data;
 //
 //                    // FIXME-OPT: Undo stack reconcile needs a backup of the data until we rework API, see #7925
-//                    char* callback_buf = is_readonly ? buf : state->TextA.Data;
+//                    char* callback_buf =  state->TextA.Data;
 //                    IM_ASSERT(callback_buf == state->TextSrc);
 //                    state->CallbackTextBackup.resize(state->TextLen + 1);
 //                    memcpy(state->CallbackTextBackup.Data, callback_buf, state->TextLen + 1);
@@ -653,7 +622,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //                    callback(&callback_data);
 //
 //                    // Read back what user may have modified
-//                    callback_buf = is_readonly ? buf : state->TextA.Data; // Pointer may have been invalidated by a resize callback
+//                    callback_buf = state->TextA.Data; // Pointer may have been invalidated by a resize callback
 //                    IM_ASSERT(callback_data.Buf == callback_buf);         // Invalid to modify those fields
 //                    IM_ASSERT(callback_data.BufSize == state->BufCapacity);
 //                    IM_ASSERT(callback_data.Flags == flags);
@@ -673,7 +642,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            }
 //
 //            // Will copy result string if modified
-//            if (!is_readonly && strcmp(state->TextSrc, buf) != 0)
+//            if (strcmp(state->TextSrc, buf) != 0)
 //            {
 //                apply_new_text = state->TextSrc;
 //                apply_new_text_length = state->TextLen;
@@ -685,7 +654,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    // Handle reapplying final data on deactivation (see InputTextDeactivateHook() for details)
 //    if (g.InputTextDeactivatedState.ID == id)
 //    {
-//        if (g.ActiveId != id && IsItemDeactivatedAfterEdit() && !is_readonly && strcmp(g.InputTextDeactivatedState.TextA.Data, buf) != 0)
+//        if (g.ActiveId != id && IsItemDeactivatedAfterEdit() && strcmp(g.InputTextDeactivatedState.TextA.Data, buf) != 0)
 //        {
 //            apply_new_text = g.InputTextDeactivatedState.TextA.Data;
 //            apply_new_text_length = g.InputTextDeactivatedState.TextA.Size - 1;
@@ -702,22 +671,6 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //        //// of our owned buffer matches the size of the string object held by the user, and by design we allow InputText() to be used
 //        //// without any storage on user's side.
 //        IM_ASSERT(apply_new_text_length >= 0);
-//        if (is_resizable)
-//        {
-//            ImGuiInputTextCallbackData callback_data;
-//            callback_data.Ctx = &g;
-//            callback_data.EventFlag = ImGuiInputTextFlags_CallbackResize;
-//            callback_data.Flags = flags;
-//            callback_data.Buf = buf;
-//            callback_data.BufTextLen = apply_new_text_length;
-//            callback_data.BufSize = ImMax(buf_size, apply_new_text_length + 1);
-//            callback_data.UserData = callback_user_data;
-//            callback(&callback_data);
-//            buf = callback_data.Buf;
-//            buf_size = callback_data.BufSize;
-//            apply_new_text_length = ImMin(callback_data.BufTextLen, buf_size - 1);
-//            IM_ASSERT(apply_new_text_length <= buf_size);
-//        }
 //        //IMGUI_DEBUG_PRINT("InputText(\"%s\"): apply_new_text length %d\n", label, apply_new_text_length);
 //
 //        // If the underlying buffer resize was denied or not carried to the next frame, apply_new_text_length+1 may be >= buf_size.
@@ -729,15 +682,8 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    if (g.ActiveId == id && clear_active_id)
 //        ClearActiveID();
 //
-//    // Render frame
-//    if (!is_multiline)
-//    {
-//        RenderNavCursor(frame_bb, id);
-//        RenderFrame(frame_bb.Min, frame_bb.Max, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
-//    }
-//
 //    const ImVec4 clip_rect(frame_bb.Min.x, frame_bb.Min.y, frame_bb.Min.x + inner_size.x, frame_bb.Min.y + inner_size.y); // Not using frame_bb.Max because we have adjusted size
-//    ImVec2 draw_pos = is_multiline ? draw_window->DC.CursorPos : frame_bb.Min + style.FramePadding;
+//    ImVec2 draw_pos = draw_window->DC.CursorPos;
 //    ImVec2 text_size(0.0f, 0.0f);
 //
 //    // Set upper limit of single-line InputTextEx() at 2 million characters strings. The current pathological worst case is a long line
@@ -774,14 +720,11 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //
 //            // Count lines and find line number for cursor and selection ends
 //            int line_count = 1;
-//            if (is_multiline)
+//            for (const char* s = text_begin; (s = (const char*)ImMemchr(s, '\n', (size_t)(text_end - s))) != NULL; s++)
 //            {
-//                for (const char* s = text_begin; (s = (const char*)ImMemchr(s, '\n', (size_t)(text_end - s))) != NULL; s++)
-//                {
-//                    if (cursor_line_no == -1 && s >= cursor_ptr) { cursor_line_no = line_count; }
-//                    if (selmin_line_no == -1 && s >= selmin_ptr) { selmin_line_no = line_count; }
-//                    line_count++;
-//                }
+//                if (cursor_line_no == -1 && s >= cursor_ptr) { cursor_line_no = line_count; }
+//                if (selmin_line_no == -1 && s >= selmin_ptr) { selmin_line_no = line_count; }
+//                line_count++;
 //            }
 //            if (cursor_line_no == -1)
 //                cursor_line_no = line_count;
@@ -798,8 +741,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            }
 //
 //            // Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
-//            if (is_multiline)
-//                text_size = ImVec2(inner_size.x, line_count * g.FontSize);
+//            text_size = ImVec2(inner_size.x, line_count * g.FontSize);
 //        }
 //
 //        // Scroll
@@ -821,18 +763,15 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            }
 //
 //            // Vertical scroll
-//            if (is_multiline)
-//            {
-//                // Test if cursor is vertically visible
-//                if (cursor_offset.y - g.FontSize < scroll_y)
-//                    scroll_y = ImMax(0.0f, cursor_offset.y - g.FontSize);
-//                else if (cursor_offset.y - (inner_size.y - style.FramePadding.y * 2.0f) >= scroll_y)
-//                    scroll_y = cursor_offset.y - inner_size.y + style.FramePadding.y * 2.0f;
-//                const float scroll_max_y = ImMax((text_size.y + style.FramePadding.y * 2.0f) - inner_size.y, 0.0f);
-//                scroll_y = ImClamp(scroll_y, 0.0f, scroll_max_y);
-//                draw_pos.y += (draw_window->Scroll.y - scroll_y);   // Manipulate cursor pos immediately avoid a frame of lag
-//                draw_window->Scroll.y = scroll_y;
-//            }
+//            // Test if cursor is vertically visible
+//            if (cursor_offset.y - g.FontSize < scroll_y)
+//                scroll_y = ImMax(0.0f, cursor_offset.y - g.FontSize);
+//            else if (cursor_offset.y - (inner_size.y - style.FramePadding.y * 2.0f) >= scroll_y)
+//                scroll_y = cursor_offset.y - inner_size.y + style.FramePadding.y * 2.0f;
+//            const float scroll_max_y = ImMax((text_size.y + style.FramePadding.y * 2.0f) - inner_size.y, 0.0f);
+//            scroll_y = ImClamp(scroll_y, 0.0f, scroll_max_y);
+//            draw_pos.y += (draw_window->Scroll.y - scroll_y);   // Manipulate cursor pos immediately avoid a frame of lag
+//            draw_window->Scroll.y = scroll_y;
 //
 //            state->CursorFollow = false;
 //        }
@@ -845,8 +784,8 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            const char* text_selected_end = text_begin + ImMax(state->Stb->select_start, state->Stb->select_end);
 //
 //            ImU32 bg_color = GetColorU32(ImGuiCol_TextSelectedBg, render_cursor ? 1.0f : 0.6f); // FIXME: current code flow mandate that render_cursor is always true here, we are leaving the transparent one for tests.
-//            float bg_offy_up = is_multiline ? 0.0f : -1.0f;    // FIXME: those offsets should be part of the style? they don't play so well with multi-line selection.
-//            float bg_offy_dn = is_multiline ? 0.0f : 2.0f;
+//            float bg_offy_up = 0.0f;   // FIXME: those offsets should be part of the style? they don't play so well with multi-line selection.
+//            float bg_offy_dn = 0.0f;
 //            ImVec2 rect_pos = draw_pos + select_start_offset - draw_scroll;
 //            for (const char* p = text_selected_begin; p < text_selected_end; )
 //            {
@@ -873,11 +812,8 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //
 //        // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
 //        // FIXME-OPT: Multiline could submit a smaller amount of contents to AddText() since we already iterated through it.
-//        if (is_multiline || (buf_display_end - buf_display) < buf_display_max_length)
-//        {
-//            ImU32 col = GetColorU32(ImGuiCol_Text);
-//            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, is_multiline ? NULL : &clip_rect);
-//        }
+//        ImU32 col = GetColorU32(ImGuiCol_Text);
+//        draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, NULL);
 //
 //        // Draw blinking cursor
 //        if (render_cursor)
@@ -892,7 +828,7 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //            // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
 //            // This is required for some backends (SDL3) to start emitting character/text inputs.
 //            // As per #6341, make sure we don't set that on the deactivating frame.
-//            if (!is_readonly && g.ActiveId == id)
+//            if (g.ActiveId == id)
 //            {
 //                ImGuiPlatformImeData* ime_data = &g.PlatformImeData; // (this is a public struct, passed to io.Platform_SetImeDataFn() handler)
 //                ime_data->WantVisible = true;
@@ -906,48 +842,37 @@ void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
 //    else
 //    {
 //        // Render text only (no selection, no cursor)
-//        if (is_multiline)
-//            text_size = ImVec2(inner_size.x, InputTextCalcTextLenAndLineCount(buf_display, &buf_display_end) * g.FontSize); // We don't need width
-//        else if (g.ActiveId == id)
-//            buf_display_end = buf_display + state->TextLen;
-//        else
-//            buf_display_end = buf_display + ImStrlen(buf_display);
+//        text_size = ImVec2(inner_size.x, InputTextCalcTextLenAndLineCount(buf_display, &buf_display_end) * g.FontSize); // We don't need width
 //
-//        if (is_multiline || (buf_display_end - buf_display) < buf_display_max_length)
-//        {
-//            // Find render position for right alignment
-//            if (flags & ImGuiInputTextFlags_ElideLeft)
-//                draw_pos.x = ImMin(draw_pos.x, frame_bb.Max.x - CalcTextSize(buf_display, NULL).x - style.FramePadding.x);
+//        // Find render position for right alignment
+//        if (flags & ImGuiInputTextFlags_ElideLeft)
+//            draw_pos.x = ImMin(draw_pos.x, frame_bb.Max.x - CalcTextSize(buf_display, NULL).x - style.FramePadding.x);
 //
-//            const ImVec2 draw_scroll = /*state ? ImVec2(state->Scroll.x, 0.0f) :*/ ImVec2(0.0f, 0.0f); // Preserve scroll when inactive?
-//            ImU32 col = GetColorU32(ImGuiCol_Text);
-//            draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, is_multiline ? NULL : &clip_rect);
-//        }
+//        const ImVec2 draw_scroll = /*state ? ImVec2(state->Scroll.x, 0.0f) :*/ ImVec2(0.0f, 0.0f); // Preserve scroll when inactive?
+//        ImU32 col = GetColorU32(ImGuiCol_Text);
+//        draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, NULL);
 //    }
 //
-//    if (is_multiline)
-//    {
-//        // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
-//        Dummy(ImVec2(text_size.x, text_size.y + style.FramePadding.y));
-//        g.NextItemData.ItemFlags |= (ImGuiItemFlags)ImGuiItemFlags_Inputable | ImGuiItemFlags_NoTabStop;
-//        EndChild();
-//        item_data_backup.StatusFlags |= (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_HoveredWindow);
+//    // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
+//    Dummy(ImVec2(text_size.x, text_size.y + style.FramePadding.y));
+//    g.NextItemData.ItemFlags |= (ImGuiItemFlags)ImGuiItemFlags_Inputable | ImGuiItemFlags_NoTabStop;
+//    EndChild();
+//    item_data_backup.StatusFlags |= (g.LastItemData.StatusFlags & ImGuiItemStatusFlags_HoveredWindow);
 //
-//        // ...and then we need to undo the group overriding last item data, which gets a bit messy as EndGroup() tries to forward scrollbar being active...
-//        // FIXME: This quite messy/tricky, should attempt to get rid of the child window.
-//        EndGroup();
-//        if (g.LastItemData.ID == 0 || g.LastItemData.ID != GetWindowScrollbarID(draw_window, ImGuiAxis_Y))
-//        {
-//            g.LastItemData.ID = id;
-//            g.LastItemData.ItemFlags = item_data_backup.ItemFlags;
-//            g.LastItemData.StatusFlags = item_data_backup.StatusFlags;
-//        }
+//    // ...and then we need to undo the group overriding last item data, which gets a bit messy as EndGroup() tries to forward scrollbar being active...
+//    // FIXME: This quite messy/tricky, should attempt to get rid of the child window.
+//    EndGroup();
+//    if (g.LastItemData.ID == 0 || g.LastItemData.ID != GetWindowScrollbarID(draw_window, ImGuiAxis_Y))
+//    {
+//        g.LastItemData.ID = id;
+//        g.LastItemData.ItemFlags = item_data_backup.ItemFlags;
+//        g.LastItemData.StatusFlags = item_data_backup.StatusFlags;
 //    }
 //    if (state)
 //        state->TextSrc = NULL;
 //
 //    // Log as text
-//    if (g.LogEnabled && !is_password)
+//    if (g.LogEnabled)
 //    {
 //        LogSetNextTextDecoration("{", "}");
 //        LogRenderedText(&draw_pos, buf_display, buf_display_end);

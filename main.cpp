@@ -20,7 +20,6 @@
 
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_EXIT 1001
-#define DOUBLE_SPACE_THRESHOLD 500 // 毫秒
 
 #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER
@@ -316,6 +315,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiWindowFlags_NoBackground |
     ImGuiWindowFlags_NoNav;
 
+
+    // TEST only
+    SnapVim::initVim();
 
     // Main loop
     bool done = false;

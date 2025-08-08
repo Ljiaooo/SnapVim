@@ -1,3 +1,5 @@
 build/
 .cache/
+external/libvim/src/generated_objs/
+external/libvim/src/libvim.a
 workline.md
