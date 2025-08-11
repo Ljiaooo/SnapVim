@@ -317,7 +317,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 
     // TEST only
-    SnapVim::initVim();
+    SnapVim::initSnapVim();
 
     // Main loop
     bool done = false;
