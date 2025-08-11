@@ -22,7 +22,7 @@ buf_T* buffer1 = nullptr;
 buf_T* currentBuffer = nullptr;
 SnapVimState* state = nullptr;
 
-void initSnapVim()
+void InitSnapVim()
 {
     vimInit(0, nullptr);
     vimOptionSetInsertSpaces(TRUE);
@@ -36,19 +36,19 @@ void initSnapVim()
     state = new SnapVimState();
 }
 
-void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
+void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
     if (ImGui::Begin("InvisibleWindow", nullptr, window_flags)) {
        //ImGui::InputTextMultiline("###SnapVim", textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight), ImGuiInputTextFlags_AllowTabInput);
-       SnapVim::snapVimEditor(textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight));
+       SnapVim::SnapVimEditor(textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight));
     }
     ImGui::End();
 }
 
-bool snapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
+bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
 {
     using namespace ImGui;
     ImGuiWindow* window = GetCurrentWindow();
@@ -221,120 +221,116 @@ bool snapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
     // Render text. We currently only render selection when the widget is active or while scrolling.
     // FIXME: We could remove the '&& render_cursor' to keep rendering selection when inactive.
 
-    // TODO, do not delete
-    //if (true)
+    IM_ASSERT(state != NULL);
+    buf_display_end = buf_display + ImStrlen((char*)buf_display);
+
+    // Render text (with cursor and selection)
+    // This is going to be messy. We need to:
+    // - Display the text (this alone can be more easily clipped)
+    // - Handle scrolling, highlight selection, display cursor (those all requires some form of 1d->2d cursor position calculation)
+    // - Measure text height (for scrollbar)
+    // We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
+    // FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
+    const char* text_begin = buf_display;
+    const char* text_end = buf_display_end;
+    ImVec2 cursor_offset, select_start_offset;
+
+    // Find lines numbers straddling cursor and selection min position
+    int cursor_line_no = vimCursorGetLine();
+    int cursor_col_no = vimCursorGetColumn();
+    int selmin_line_no =  -1;
+    const char* cursor_ptr = text_begin;
+    const char* selmin_ptr = text_begin;
+
+    // Count lines and find line number for cursor and selection ends
+    int line_count = 1;
+    for (const char* s = text_begin; (s = (const char*)ImMemchr(s, '\n', (size_t)(text_end - s))) != NULL; s++)
     {
-        IM_ASSERT(state != NULL);
-        buf_display_end = buf_display + ImStrlen((char*)buf_display);
+        if (cursor_line_no == -1 && s >= cursor_ptr) { cursor_line_no = line_count; }
+        if (selmin_line_no == -1 && s >= selmin_ptr) { selmin_line_no = line_count; }
+        line_count++;
+    }
+    if (cursor_line_no == -1)
+        cursor_line_no = line_count;
+    if (selmin_line_no == -1)
+        selmin_line_no = line_count;
 
-        // Render text (with cursor and selection)
-        // This is going to be messy. We need to:
-        // - Display the text (this alone can be more easily clipped)
-        // - Handle scrolling, highlight selection, display cursor (those all requires some form of 1d->2d cursor position calculation)
-        // - Measure text height (for scrollbar)
-        // We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
-        // FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
-        const char* text_begin = buf_display;
-        const char* text_end = buf_display_end;
-        ImVec2 cursor_offset, select_start_offset;
+    // Calculate 2d position by finding the beginning of the line and measuring distance
+    char_u* line = vimBufferGetLine(vimBuf, cursor_line_no);
+    ImVec2 cursor_x_and_width = CalCursorXAndWidth(&g, line, cursor_col_no, vimGetMode());
+    cursor_offset.x = cursor_x_and_width.x;
+    cursor_offset.y = cursor_line_no * g.FontSize;
+    if (selmin_line_no >= 0)
+    {
+        //select_start_offset.x = InputTextCalcTextSize(&g, ImStrbol(selmin_ptr, text_begin), selmin_ptr).x;
+        select_start_offset.x = 0;
+        select_start_offset.y = selmin_line_no * g.FontSize;
+    }
 
+    // Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
+    text_size = ImVec2(inner_size.x, line_count * g.FontSize);
+
+    // Scroll
+    if (render_cursor && state->CursorFollow)
+    {
+        // Horizontal scroll in chunks of quarter width
+        if (!(flags & ImGuiInputTextFlags_NoHorizontalScroll))
         {
-            // Find lines numbers straddling cursor and selection min position
-            int cursor_line_no = -1;
-            int selmin_line_no =  -1;
-            const char* cursor_ptr = text_begin;
-            const char* selmin_ptr = text_begin;
-
-            // Count lines and find line number for cursor and selection ends
-            int line_count = 1;
-            for (const char* s = text_begin; (s = (const char*)ImMemchr(s, '\n', (size_t)(text_end - s))) != NULL; s++)
-            {
-                if (cursor_line_no == -1 && s >= cursor_ptr) { cursor_line_no = line_count; }
-                if (selmin_line_no == -1 && s >= selmin_ptr) { selmin_line_no = line_count; }
-                line_count++;
-            }
-            if (cursor_line_no == -1)
-                cursor_line_no = line_count;
-            if (selmin_line_no == -1)
-                selmin_line_no = line_count;
-
-            // Calculate 2d position by finding the beginning of the line and measuring distance
-            //cursor_offset.x = InputTextCalcTextSize(&g, ImStrbol(cursor_ptr, text_begin), cursor_ptr).x;
-            cursor_offset.x = 0;
-            cursor_offset.y = cursor_line_no * g.FontSize;
-            if (selmin_line_no >= 0)
-            {
-                //select_start_offset.x = InputTextCalcTextSize(&g, ImStrbol(selmin_ptr, text_begin), selmin_ptr).x;
-                select_start_offset.x = 0;
-                select_start_offset.y = selmin_line_no * g.FontSize;
-            }
-
-            // Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
-            text_size = ImVec2(inner_size.x, line_count * g.FontSize);
+            const float scroll_increment_x = inner_size.x * 0.25f;
+            const float visible_width = inner_size.x - style.FramePadding.x;
+            if (cursor_offset.x < state->Scroll.x)
+                state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
+            else if (cursor_offset.x - visible_width >= state->Scroll.x)
+                state->Scroll.x = IM_TRUNC(cursor_offset.x - visible_width + scroll_increment_x);
+        }
+        else
+        {
+            state->Scroll.y = 0.0f;
         }
 
-        // Scroll
-        if (render_cursor && state->CursorFollow)
+        // Vertical scroll
+        // Test if cursor is vertically visible
+        if (cursor_offset.y - g.FontSize < scroll_y)
+            scroll_y = ImMax(0.0f, cursor_offset.y - g.FontSize);
+        else if (cursor_offset.y - (inner_size.y - style.FramePadding.y * 2.0f) >= scroll_y)
+            scroll_y = cursor_offset.y - inner_size.y + style.FramePadding.y * 2.0f;
+        const float scroll_max_y = ImMax((text_size.y + style.FramePadding.y * 2.0f) - inner_size.y, 0.0f);
+        scroll_y = ImClamp(scroll_y, 0.0f, scroll_max_y);
+        draw_pos.y += (draw_window->Scroll.y - scroll_y);   // Manipulate cursor pos immediately avoid a frame of lag
+        draw_window->Scroll.y = scroll_y;
+
+        state->CursorFollow = false;
+    }
+
+    // Draw selection
+    const ImVec2 draw_scroll = ImVec2(state->Scroll.x, 0.0f);
+
+    // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
+    // FIXME-OPT: Multiline could submit a smaller amount of contents to AddText() since we already iterated through it.
+    ImU32 col = GetColorU32(ImGuiCol_Text);
+    draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, NULL);
+
+    // Draw blinking cursor
+    if (render_cursor)
+    {
+        state->CursorAnim += io.DeltaTime;
+        bool cursor_is_visible = (!g.IO.ConfigInputTextCursorBlink) || (state->CursorAnim <= 0.0f) || ImFmod(state->CursorAnim, 1.20f) <= 0.80f;
+        ImVec2 cursor_screen_pos = ImTrunc(draw_pos + cursor_offset - draw_scroll);
+        ImRect cursor_screen_rect(cursor_screen_pos.x, cursor_screen_pos.y - g.FontSize + 0.5f, cursor_screen_pos.x + 1.0f, cursor_screen_pos.y - 1.5f);
+        if (cursor_is_visible && cursor_screen_rect.Overlaps(clip_rect))
+            draw_window->DrawList->AddRectFilled(cursor_screen_rect.Min, ImVec2(cursor_screen_pos.x + cursor_x_and_width.y, cursor_screen_rect.GetBL().y), GetColorU32(ImGuiCol_InputTextCursor));
+
+        // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
+        // This is required for some backends (SDL3) to start emitting character/text inputs.
+        // As per #6341, make sure we don't set that on the deactivating frame.
+        if (g.ActiveId == id)
         {
-            // Horizontal scroll in chunks of quarter width
-            if (!(flags & ImGuiInputTextFlags_NoHorizontalScroll))
-            {
-                const float scroll_increment_x = inner_size.x * 0.25f;
-                const float visible_width = inner_size.x - style.FramePadding.x;
-                if (cursor_offset.x < state->Scroll.x)
-                    state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
-                else if (cursor_offset.x - visible_width >= state->Scroll.x)
-                    state->Scroll.x = IM_TRUNC(cursor_offset.x - visible_width + scroll_increment_x);
-            }
-            else
-            {
-                state->Scroll.y = 0.0f;
-            }
-
-            // Vertical scroll
-            // Test if cursor is vertically visible
-            if (cursor_offset.y - g.FontSize < scroll_y)
-                scroll_y = ImMax(0.0f, cursor_offset.y - g.FontSize);
-            else if (cursor_offset.y - (inner_size.y - style.FramePadding.y * 2.0f) >= scroll_y)
-                scroll_y = cursor_offset.y - inner_size.y + style.FramePadding.y * 2.0f;
-            const float scroll_max_y = ImMax((text_size.y + style.FramePadding.y * 2.0f) - inner_size.y, 0.0f);
-            scroll_y = ImClamp(scroll_y, 0.0f, scroll_max_y);
-            draw_pos.y += (draw_window->Scroll.y - scroll_y);   // Manipulate cursor pos immediately avoid a frame of lag
-            draw_window->Scroll.y = scroll_y;
-
-            state->CursorFollow = false;
-        }
-
-        // Draw selection
-        const ImVec2 draw_scroll = ImVec2(state->Scroll.x, 0.0f);
-
-        // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
-        // FIXME-OPT: Multiline could submit a smaller amount of contents to AddText() since we already iterated through it.
-        ImU32 col = GetColorU32(ImGuiCol_Text);
-        draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, NULL);
-
-        // Draw blinking cursor
-        if (render_cursor)
-        {
-            state->CursorAnim += io.DeltaTime;
-            bool cursor_is_visible = (!g.IO.ConfigInputTextCursorBlink) || (state->CursorAnim <= 0.0f) || ImFmod(state->CursorAnim, 1.20f) <= 0.80f;
-            ImVec2 cursor_screen_pos = ImTrunc(draw_pos + cursor_offset - draw_scroll);
-            ImRect cursor_screen_rect(cursor_screen_pos.x, cursor_screen_pos.y - g.FontSize + 0.5f, cursor_screen_pos.x + 1.0f, cursor_screen_pos.y - 1.5f);
-            if (cursor_is_visible && cursor_screen_rect.Overlaps(clip_rect))
-                draw_window->DrawList->AddLine(cursor_screen_rect.Min, cursor_screen_rect.GetBL(), GetColorU32(ImGuiCol_InputTextCursor), 1.0f); // FIXME-DPI: Cursor thickness (#7031)
-
-            // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
-            // This is required for some backends (SDL3) to start emitting character/text inputs.
-            // As per #6341, make sure we don't set that on the deactivating frame.
-            if (g.ActiveId == id)
-            {
-                ImGuiPlatformImeData* ime_data = &g.PlatformImeData; // (this is a public struct, passed to io.Platform_SetImeDataFn() handler)
-                ime_data->WantVisible = true;
-                ime_data->WantTextInput = true;
-                ime_data->InputPos = ImVec2(cursor_screen_pos.x - 1.0f, cursor_screen_pos.y - g.FontSize);
-                ime_data->InputLineHeight = g.FontSize;
-                ime_data->ViewportId = window->Viewport->ID;
-            }
+            ImGuiPlatformImeData* ime_data = &g.PlatformImeData; // (this is a public struct, passed to io.Platform_SetImeDataFn() handler)
+            ime_data->WantVisible = true;
+            ime_data->WantTextInput = true;
+            ime_data->InputPos = ImVec2(cursor_screen_pos.x - 1.0f, cursor_screen_pos.y - g.FontSize);
+            ime_data->InputLineHeight = g.FontSize;
+            ime_data->ViewportId = window->Viewport->ID;
         }
     }
 
@@ -372,6 +368,47 @@ bool snapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
         return validated;
     else
         return value_changed;
+}
+
+ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
+{
+    ImGuiContext& g = *ctx;
+    ImFontBaked* baked = g.FontBaked;
+    const float line_height = g.FontSize;
+    const float scale = line_height / baked->Size;
+
+    float cursor_x = 0;
+    float cursor_width = 1.0f;
+    float line_width = 0.0f;
+    const char* text_end = (const char*)line + ImStrlen((char*)line);
+    int current_col = 0;
+
+    const char* s = (const char*)line;
+    unsigned int c;
+    while (s < text_end && current_col <= col)
+    {
+        c = (unsigned int)*s;
+        if (c < 0x80)
+            s += 1;
+        else
+            s += ImTextCharFromUtf8(&c, s, text_end);
+
+        current_col++;
+
+        line_width += baked->GetCharAdvance((ImWchar)c) * scale;
+    }
+
+    if (cursor_x < line_width)
+        cursor_x = line_width;
+
+    if ((mode & INSERT) == INSERT)
+        cursor_width = 1.0f;
+    else if ((mode & NORMAL) == NORMAL)
+    {
+        cursor_width = baked->GetCharAdvance((ImWchar)c) * scale;
+        cursor_x = cursor_x > cursor_width ? cursor_x - cursor_width : 0.0f;
+    }
+    return ImVec2(cursor_x, cursor_width);
 }
 
 }

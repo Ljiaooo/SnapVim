@@ -1,5 +1,7 @@
 #pragma once
+#include "external/libvim/src/vim.h"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "svimconfig.h"
 
 #define HISTORY_BUFFER_SIZE 2
@@ -19,8 +21,9 @@ struct SnapVimState
 
     void CursorAnimReset() { CursorAnim = -0.3f; };
 };
-void initSnapVim();
-void renderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags);
-bool snapVimEditor(char* buf, int buf_size, const ImVec2& size_arg);
+void InitSnapVim();
+void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags);
+bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg);
+ImVec2 CalCursorXAndWidth(ImGuiContext* ctx, char_u* line, int col, int mode);
 
 }

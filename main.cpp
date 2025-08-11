@@ -317,7 +317,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 
     // TEST only
-    SnapVim::initSnapVim();
+    SnapVim::InitSnapVim();
 
     // Main loop
     bool done = false;
@@ -351,7 +351,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
         
 
-        SnapVim::renderSnapVimEditor(g_textBuffer, winWidth - padding.x * 2, winHeight - padding.y * 2, window_flags);
+        SnapVim::RenderSnapVimEditor(g_textBuffer, winWidth - padding.x * 2, winHeight - padding.y * 2, window_flags);
 
 
         // Rendering
