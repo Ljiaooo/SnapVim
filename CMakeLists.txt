@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.17)
 
 project(SnapVim LANGUAGES C CXX)
 
@@ -27,7 +27,6 @@ set(IMGUI_SOURCES
 set(SNAPVIM_SOURCES
     main.cpp
     res/resources.rc
-    #imgui_demo.cpp
     snapvim.cpp
     snapvim.h
 )

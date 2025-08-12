@@ -17,6 +17,10 @@
 #define WINDOW_HEIGHT 400
 #define BUFFER_SIZE 10000
 #define TRANSPARENT_VALUE 180 
-#define BACKGROUND_COLOR ImVec4(0.157, 0.157, 0.157, 1.0)
 #define ENGLISH_FONT "JetBrainsMono-Medium.ttf"
 #define CHINESE_FONT "NotoSansSC-Medium.ttf"
+
+#define BACKGROUND_COLOR ImVec4(0.157, 0.157, 0.157, 1.0)
+#define CURSOR_COLOR ImColor(100, 100, 120)
+#define HIGHLIGHT_LINE_COLOR ImColor(60, 60, 60)
+#define SCROLLBAR_BG_COLOR ImColor(0, 0, 0, 0)

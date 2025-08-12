@@ -1,12 +1,13 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui.h"
-#include <cstdio>
-#include <vim.h>
 #endif
 
+#include <cstdio>
+#include <vim.h>
 #include <windows.h>
 #include <lm.h>
+#include "svimconfig.h"
+#include "imgui.h"
 #include "snapvim.h"
 #include "imgui_internal.h"
 
@@ -25,6 +26,7 @@ SnapVimState* state = nullptr;
 
 void InitSnapVim()
 {
+    // init vim backend
     vimInit(0, nullptr);
     vimOptionSetInsertSpaces(TRUE);
     vimOptionSetTabSize(2);
@@ -42,7 +44,12 @@ void InitSnapVim()
     io.ConfigNavEscapeClearFocusItem = false;
     io.ConfigNavEscapeClearFocusWindow = false;
     ImGuiStyle& style = g.Style;
-    style.Colors[ImGuiCol_InputTextCursor] = ImColor(100, 100, 120);
+    style.Colors[ImGuiCol_FrameBg] = BACKGROUND_COLOR;
+    style.Colors[ImGuiCol_InputTextCursor] = CURSOR_COLOR;
+    style.Colors[ImGuiCol_ScrollbarBg] = SCROLLBAR_BG_COLOR;
+    style.FramePadding = ImVec2(0, 0);
+    style.WindowPadding = ImVec2(8, 10);
+    style.ScrollbarSize = 12;
 }
 
 void OnKeyPressed(unsigned int key)
@@ -51,6 +58,7 @@ void OnKeyPressed(unsigned int key)
     char utf[5];
     ImTextCharToUtf8(utf, key);
     vimInput((char_u*)utf);
+    state->CursorFollow = true;
     state->CursorAnimReset();
 }
 
@@ -60,17 +68,15 @@ void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
     if (ImGui::Begin("InvisibleWindow", nullptr, window_flags)) {
-       SnapVim::SnapVimEditor(textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight));
+       SnapVim::SnapVimEditor(textBuffer, ImVec2(winWidth, winHeight));
     }
     ImGui::End();
 }
 
-bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
+bool SnapVimEditor(char* buf, const ImVec2& size_arg)
 {
     using namespace ImGui;
     ImGuiWindow* window = GetCurrentWindow();
-
-    IM_ASSERT(buf != NULL && buf_size >= 0);
 
     ImGuiContext& g = *GImGui;
     ImGuiIO& io = g.IO;
@@ -83,7 +89,7 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
     BeginGroup();
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
-    const ImVec2 frame_size = CalcItemSize(size_arg, CalcItemWidth(), ( g.FontSize * 8.0f) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
+    const ImVec2 frame_size = CalcItemSize(ImVec2(size_arg.x - style.WindowPadding.x * 2, size_arg.y - style.WindowPadding.y * 2), CalcItemWidth(), ( g.FontSize * 8.0f) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
     const ImVec2 total_size = ImVec2(frame_size.x + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), frame_size.y);
 
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + frame_size);
@@ -108,8 +114,8 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
 
     // Prevent NavActivate reactivating in BeginChild() when we are already active.
     const ImGuiID backup_activate_id = g.NavActivateId;
-    if (g.ActiveId == id) // Prevent reactivation
-        g.NavActivateId = 0;
+    //if (g.ActiveId == id) // Prevent reactivation
+    //    g.NavActivateId = 0;
 
     // We reproduce the contents of BeginChildFrame() in order to provide 'label' so our window internal data are easier to read/debug.
     PushStyleColor(ImGuiCol_ChildBg, style.Colors[ImGuiCol_FrameBg]);
@@ -259,26 +265,17 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
     // Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
     text_size = ImVec2(inner_size.x, line_count * g.FontSize);
 
-    // Scroll
     if (render_cursor && state->CursorFollow)
     {
-        // Horizontal scroll in chunks of quarter width
-        if (!(flags & ImGuiInputTextFlags_NoHorizontalScroll))
-        {
-            const float scroll_increment_x = inner_size.x * 0.25f;
-            const float visible_width = inner_size.x - style.FramePadding.x;
-            if (cursor_offset.x < state->Scroll.x)
-                state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
-            else if (cursor_offset.x - visible_width >= state->Scroll.x)
-                state->Scroll.x = IM_TRUNC(cursor_offset.x - visible_width + scroll_increment_x);
-        }
-        else
-        {
-            state->Scroll.y = 0.0f;
-        }
+        // Horizontal scroll, move 1 / 10 of the inner size
+        const float scroll_increment_x = inner_size.x * 0.1f;
+        const float visible_width = inner_size.x - style.FramePadding.x;
+        if (cursor_offset.x < state->Scroll.x)
+            state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
+        else if (cursor_offset.x - visible_width >= state->Scroll.x)
+            state->Scroll.x = IM_TRUNC(cursor_offset.x - visible_width + scroll_increment_x);
 
         // Vertical scroll
-        // Test if cursor is vertically visible
         if (cursor_offset.y - g.FontSize < scroll_y)
             scroll_y = ImMax(0.0f, cursor_offset.y - g.FontSize);
         else if (cursor_offset.y - (inner_size.y - style.FramePadding.y * 2.0f) >= scroll_y)
@@ -289,6 +286,15 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
         draw_window->Scroll.y = scroll_y;
 
         state->CursorFollow = false;
+    }
+
+    // Draw hightlight line
+    if (state->HighlightLine)
+    {
+        ImVec2 highlight_line_pos = ImTrunc(draw_pos + ImVec2(0.0f, (cursor_line_no - 1) * g.FontSize));
+        ImRect highlight_line_rect(highlight_line_pos.x, highlight_line_pos.y, highlight_line_pos.x + inner_size.x, highlight_line_pos.y + g.FontSize - 1.5f);
+        if (highlight_line_rect.Overlaps(clip_rect))
+            draw_window->DrawList->AddRectFilled(highlight_line_rect.Min, highlight_line_rect.Max, HIGHLIGHT_LINE_COLOR);
     }
 
     // Draw selection
@@ -328,7 +334,6 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
         char_u* line = vimBufferGetLine(vimBuf, (linenr_T)line_no);
         if (line == NULL)
             continue;
-
         ImVec2 line_pos = ImTrunc(draw_pos + ImVec2(0.0f, line_no * g.FontSize) - draw_scroll);
 
         // Render the text

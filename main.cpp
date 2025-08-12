@@ -1,22 +1,19 @@
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
 #define UNICODE
 #define _UNICODE
 
-#include "snapvim.h"
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx12.h"
-#include "res/resources.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <tchar.h>
 #include <shellapi.h>
 #include <dwmapi.h>
 #include <stdio.h>
+
+#include "snapvim.h"
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
+#include "res/resources.h"
+#include "svimconfig.h"
 
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_EXIT 1001
@@ -262,8 +259,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiStyle& style = ImGui::GetStyle();
     style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
-    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f); // Set frame background color to transparent
-    ImVec2 padding = style.WindowPadding;
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -351,7 +346,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
         
 
-        SnapVim::RenderSnapVimEditor(g_textBuffer, winWidth - padding.x * 2, winHeight - padding.y * 2, window_flags);
+        SnapVim::RenderSnapVimEditor(g_textBuffer, winWidth, winHeight, window_flags);
 
 
         // Rendering
