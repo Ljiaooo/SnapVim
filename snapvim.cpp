@@ -262,7 +262,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     {
         // Horizontal scroll, move 1 / 10 of the inner size
         const float scroll_increment_x = inner_size.x * 0.1f;
-        const float visible_width = inner_size.x - style.FramePadding.x;
+        const float visible_width = inner_size.x - style.FramePadding.x - 2 * PADDING;
         if (cursor_offset.x < state->Scroll.x)
             state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
         else if (cursor_offset.x - visible_width >= state->Scroll.x)
@@ -284,14 +284,14 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     // Draw hightlight line
     if (state->HighlightLine)
     {
-        ImVec2 highlight_line_pos = ImTrunc(draw_pos + ImVec2(0.0f, (cursor_line_no - 1) * g.FontSize));
-        ImRect highlight_line_rect(highlight_line_pos.x, highlight_line_pos.y, highlight_line_pos.x + inner_size.x, highlight_line_pos.y + g.FontSize - 1.5f);
+        ImVec2 highlight_line_pos = ImTrunc(draw_pos + ImVec2(PADDING, (cursor_line_no - 1) * g.FontSize));
+        ImRect highlight_line_rect(highlight_line_pos.x, highlight_line_pos.y, highlight_line_pos.x + inner_size.x - 2 * PADDING, highlight_line_pos.y + g.FontSize - 1.5f);
         if (highlight_line_rect.Overlaps(clip_rect))
             draw_window->DrawList->AddRectFilled(highlight_line_rect.Min, highlight_line_rect.Max, HIGHLIGHT_LINE_COLOR);
     }
 
     // Draw selection
-    const ImVec2 draw_scroll = ImVec2(state->Scroll.x - 10, 0.0f);
+    const ImVec2 draw_scroll = ImVec2(state->Scroll.x - PADDING, 0.0f);
 
     // Draw blinking cursor
     if (render_cursor)
@@ -333,6 +333,10 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll + offset, col, (const char*)line, (const char*)line + ImStrlen((char*)line), 0.0f, NULL);
         offset.y += g.FontSize;
     }
+
+    // Draw Padding Rectangle
+    draw_window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(PADDING, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
+    draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Max.x - PADDING, frame_bb.Min.y), ImVec2(frame_bb.Max.x, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
 
     // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
     Dummy(ImVec2(text_size.x, text_size.y + style.FramePadding.y));

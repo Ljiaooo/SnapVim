@@ -24,3 +24,4 @@
 #define CURSOR_COLOR ImColor(80, 80, 120)
 #define HIGHLIGHT_LINE_COLOR ImColor(60, 60, 60)
 #define SCROLLBAR_BG_COLOR ImColor(0, 0, 0, 0)
+#define PADDING 10.0f
