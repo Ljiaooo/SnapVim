@@ -112,18 +112,11 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     if (g.NavActivateId == id && (g.NavActivateFlags & ImGuiActivateFlags_FromTabbing))
         g.NavActivateId = 0;
 
-    // Prevent NavActivate reactivating in BeginChild() when we are already active.
-    const ImGuiID backup_activate_id = g.NavActivateId;
-    //if (g.ActiveId == id) // Prevent reactivation
-    //    g.NavActivateId = 0;
-
-    // We reproduce the contents of BeginChildFrame() in order to provide 'label' so our window internal data are easier to read/debug.
     PushStyleColor(ImGuiCol_ChildBg, style.Colors[ImGuiCol_FrameBg]);
     PushStyleVar(ImGuiStyleVar_ChildRounding, style.FrameRounding);
     PushStyleVar(ImGuiStyleVar_ChildBorderSize, style.FrameBorderSize);
     PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); // Ensure no clip rect so mouse hover can reach FramePadding edges
     bool child_visible = BeginChildEx(label, id, frame_bb.GetSize(), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoMove);
-    g.NavActivateId = backup_activate_id;
     PopStyleVar(3);
     PopStyleColor();
     if (!child_visible)
