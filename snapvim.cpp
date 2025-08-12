@@ -48,7 +48,7 @@ void InitSnapVim()
     style.Colors[ImGuiCol_InputTextCursor] = CURSOR_COLOR;
     style.Colors[ImGuiCol_ScrollbarBg] = SCROLLBAR_BG_COLOR;
     style.FramePadding = ImVec2(0, 0);
-    style.WindowPadding = ImVec2(8, 10);
+    style.WindowPadding = ImVec2(0, 10);
     style.ScrollbarSize = 12;
 }
 
@@ -291,7 +291,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     }
 
     // Draw selection
-    const ImVec2 draw_scroll = ImVec2(state->Scroll.x, 0.0f);
+    const ImVec2 draw_scroll = ImVec2(state->Scroll.x - 10, 0.0f);
 
     // Draw blinking cursor
     if (render_cursor)
