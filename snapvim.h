@@ -22,6 +22,7 @@ struct SnapVimState
     void CursorAnimReset() { CursorAnim = -0.3f; };
 };
 void InitSnapVim();
+void OnKeyPressed(unsigned int key);
 void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags);
 bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg);
 ImVec2 CalCursorXAndWidth(ImGuiContext* ctx, char_u* line, int col, int mode);

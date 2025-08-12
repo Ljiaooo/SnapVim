@@ -1,6 +1,7 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
+#include <cstdio>
 #include <vim.h>
 #endif
 
@@ -34,6 +35,23 @@ void InitSnapVim()
     currentBuffer = buffer0;
 
     state = new SnapVimState();
+
+    // global settings
+    ImGuiContext& g = *GImGui;
+    ImGuiIO& io = g.IO;
+    io.ConfigNavEscapeClearFocusItem = false;
+    io.ConfigNavEscapeClearFocusWindow = false;
+    ImGuiStyle& style = g.Style;
+    style.Colors[ImGuiCol_InputTextCursor] = ImColor(100, 100, 120);
+}
+
+void OnKeyPressed(unsigned int key)
+{
+    // handle input
+    char utf[5];
+    ImTextCharToUtf8(utf, key);
+    vimInput((char_u*)utf);
+    state->CursorAnimReset();
 }
 
 void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWindowFlags window_flags)
@@ -42,7 +60,6 @@ void RenderSnapVimEditor(char* textBuffer, int winWidth, int winHeight, ImGuiWin
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
     if (ImGui::Begin("InvisibleWindow", nullptr, window_flags)) {
-       //ImGui::InputTextMultiline("###SnapVim", textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight), ImGuiInputTextFlags_AllowTabInput);
        SnapVim::SnapVimEditor(textBuffer, BUFFER_SIZE, ImVec2(winWidth, winHeight));
     }
     ImGui::End();
@@ -57,8 +74,6 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
 
     ImGuiContext& g = *GImGui;
     ImGuiIO& io = g.IO;
-    io.ConfigNavEscapeClearFocusItem = false;
-    io.ConfigNavEscapeClearFocusWindow = false;
     const ImGuiStyle& style = g.Style;
 
     const bool RENDER_SELECTION_WHEN_INACTIVE = false;
@@ -192,9 +207,7 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
                 for (int n = 0; n < io.InputQueueCharacters.Size; n++)
                 {
                     unsigned int c = (unsigned int)io.InputQueueCharacters[n];
-                    char utf[5];
-                    ImTextCharToUtf8(utf, c);
-                    vimInput((char_u*)utf);
+                    OnKeyPressed(c);
                 }
 
             // Consume characters
@@ -215,41 +228,17 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
     // without any carriage return, which would makes ImFont::RenderText() reserve too many vertices and probably crash. Avoid it altogether.
     // Note that we only use this limit on single-line InputText(), so a pathologically large line on a InputTextMultiline() would still crash.
     const int buf_display_max_length = 2 * 1024 * 1024;
-    const char* buf_display = (char*)vimBufferGetLine(vimBuf, 0); //-V595
-    const char* buf_display_end = NULL; // We have specialized paths below for setting the length
 
-    // Render text. We currently only render selection when the widget is active or while scrolling.
-    // FIXME: We could remove the '&& render_cursor' to keep rendering selection when inactive.
 
-    IM_ASSERT(state != NULL);
-    buf_display_end = buf_display + ImStrlen((char*)buf_display);
-
-    // Render text (with cursor and selection)
-    // This is going to be messy. We need to:
-    // - Display the text (this alone can be more easily clipped)
-    // - Handle scrolling, highlight selection, display cursor (those all requires some form of 1d->2d cursor position calculation)
-    // - Measure text height (for scrollbar)
-    // We are attempting to do most of that in **one main pass** to minimize the computation cost (non-negligible for large amount of text) + 2nd pass for selection rendering (we could merge them by an extra refactoring effort)
-    // FIXME: This should occur on buf_display but we'd need to maintain cursor/select_start/select_end for UTF-8.
-    const char* text_begin = buf_display;
-    const char* text_end = buf_display_end;
     ImVec2 cursor_offset, select_start_offset;
 
     // Find lines numbers straddling cursor and selection min position
     int cursor_line_no = vimCursorGetLine();
     int cursor_col_no = vimCursorGetColumn();
     int selmin_line_no =  -1;
-    const char* cursor_ptr = text_begin;
-    const char* selmin_ptr = text_begin;
 
     // Count lines and find line number for cursor and selection ends
-    int line_count = 1;
-    for (const char* s = text_begin; (s = (const char*)ImMemchr(s, '\n', (size_t)(text_end - s))) != NULL; s++)
-    {
-        if (cursor_line_no == -1 && s >= cursor_ptr) { cursor_line_no = line_count; }
-        if (selmin_line_no == -1 && s >= selmin_ptr) { selmin_line_no = line_count; }
-        line_count++;
-    }
+    size_t line_count = vimBufferGetLineCount(vimBuf);
     if (cursor_line_no == -1)
         cursor_line_no = line_count;
     if (selmin_line_no == -1)
@@ -305,11 +294,6 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
     // Draw selection
     const ImVec2 draw_scroll = ImVec2(state->Scroll.x, 0.0f);
 
-    // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
-    // FIXME-OPT: Multiline could submit a smaller amount of contents to AddText() since we already iterated through it.
-    ImU32 col = GetColorU32(ImGuiCol_Text);
-    draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll, col, buf_display, buf_display_end, 0.0f, NULL);
-
     // Draw blinking cursor
     if (render_cursor)
     {
@@ -334,6 +318,24 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
         }
     }
 
+    // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
+    // FIXME-OPT: Multiline could submit a smaller amount of contents to AddText() since we already iterated through it.
+    ImU32 col = GetColorU32(ImGuiCol_Text);
+    ImVec2 offset = ImVec2(0.0f, 0.0f);
+    for (size_t line_no = 1; line_no <= line_count; line_no++)
+    {
+        // Get the line text
+        char_u* line = vimBufferGetLine(vimBuf, (linenr_T)line_no);
+        if (line == NULL)
+            continue;
+
+        ImVec2 line_pos = ImTrunc(draw_pos + ImVec2(0.0f, line_no * g.FontSize) - draw_scroll);
+
+        // Render the text
+        draw_window->DrawList->AddText(g.Font, g.FontSize, draw_pos - draw_scroll + offset, col, (const char*)line, (const char*)line + ImStrlen((char*)line), 0.0f, NULL);
+        offset.y += g.FontSize;
+    }
+
     // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
     Dummy(ImVec2(text_size.x, text_size.y + style.FramePadding.y));
     g.NextItemData.ItemFlags |= (ImGuiItemFlags)ImGuiItemFlags_Inputable | ImGuiItemFlags_NoTabStop;
@@ -348,13 +350,6 @@ bool SnapVimEditor(char* buf, int buf_size, const ImVec2& size_arg)
         g.LastItemData.ID = id;
         g.LastItemData.ItemFlags = item_data_backup.ItemFlags;
         g.LastItemData.StatusFlags = item_data_backup.StatusFlags;
-    }
-
-    // Log as text
-    if (g.LogEnabled)
-    {
-        LogSetNextTextDecoration("{", "}");
-        LogRenderedText(&draw_pos, buf_display, buf_display_end);
     }
 
     if (label_size.x > 0)
@@ -384,7 +379,9 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
     int current_col = 0;
 
     const char* s = (const char*)line;
+    const char* cur_pos = s;
     unsigned int c;
+    if ((mode & INSERT) == INSERT) col -= 1;
     while (s < text_end && current_col <= col)
     {
         c = (unsigned int)*s;
@@ -393,8 +390,8 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
         else
             s += ImTextCharFromUtf8(&c, s, text_end);
 
-        current_col++;
-
+        current_col += (s - cur_pos);
+        cur_pos = s;
         line_width += baked->GetCharAdvance((ImWchar)c) * scale;
     }
 
@@ -402,7 +399,7 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
         cursor_x = line_width;
 
     if ((mode & INSERT) == INSERT)
-        cursor_width = 1.0f;
+        cursor_width = 2.0f;
     else if ((mode & NORMAL) == NORMAL)
     {
         cursor_width = baked->GetCharAdvance((ImWchar)c) * scale;
