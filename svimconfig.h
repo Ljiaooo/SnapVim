@@ -1,10 +1,3 @@
-/**
- * Not Implemented Features:
- * - vim search highlight
- * - visual mode multi-cursor
- * - custom commands for view history / input(:w)
- */
-
 #pragma once
 #define FONT_SIZE 25.0f
 #define WINDOW_WIDTH 640

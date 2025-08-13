@@ -33,7 +33,7 @@ static const int APP_NUM_BACK_BUFFERS = 2;
 static const int APP_SRV_HEAP_SIZE = 64;
 
 // Global value
-static HWND g_previousFocus = nullptr;
+HWND g_previousFocus = nullptr;
 static char* g_textBuffer = nullptr;
 
 struct FrameContext
@@ -154,52 +154,17 @@ void EnableWindowRoundedCorners(HWND hwnd)
     DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
 }
 
-void PasteTextToPreviousFocus(const char* text) {
-    if (!IsWindow(g_previousFocus))
-        return;
-
-    // activate target window
-    SetForegroundWindow(g_previousFocus);
-
-    // Set clipboard content
-    ImGui::SetClipboardText(text);
-
-    // Simulate Ctrl+V paste
-    INPUT inputs[4] = {};
-
-    // Ctrl down
-    inputs[0].type = INPUT_KEYBOARD;
-    inputs[0].ki.wVk = VK_CONTROL;
-
-    // V down
-    inputs[1].type = INPUT_KEYBOARD;
-    inputs[1].ki.wVk = 'V';
-
-    // V up
-    inputs[2].type = INPUT_KEYBOARD;
-    inputs[2].ki.wVk = 'V';
-    inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
-
-    // Ctrl up
-    inputs[3].type = INPUT_KEYBOARD;
-    inputs[3].ki.wVk = VK_CONTROL;
-    inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
-
-    SendInput(4, inputs, sizeof(INPUT));
-}
-
 // Main code
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // Debug Only
-    AllocConsole();
+    //// Debug Only
+    //AllocConsole();
 
-    // 重定向标准输出到控制台
-    FILE* fp;
-    freopen_s(&fp, "CONOUT$", "w", stdout);
-    freopen_s(&fp, "CONOUT$", "w", stderr);
-    freopen_s(&fp, "CONIN$", "r", stdin);
-    // End Debug
+    //FILE* fp;
+    //freopen_s(&fp, "CONOUT$", "w", stdout);
+    //freopen_s(&fp, "CONOUT$", "w", stderr);
+    //freopen_s(&fp, "CONIN$", "r", stdin);
+    //// End Debug
 
 
     // Make process DPI aware and obtain main monitor scale
@@ -304,8 +269,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiWindowFlags_NoBackground |
     ImGuiWindowFlags_NoNav;
 
-    g_textBuffer = (char*)ImGui::MemAlloc(BUFFER_SIZE * sizeof(ImWchar));
-    SnapVim::InitSnapVim(g_textBuffer);
+    SnapVim::InitSnapVim(hwnd);
 
     // Main loop
     bool done = false;
@@ -686,7 +650,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             if (IsWindowVisible(hWnd))
             {
-                PasteTextToPreviousFocus(g_textBuffer);
                 ShowWindow(hWnd, SW_HIDE);
             }
             else {

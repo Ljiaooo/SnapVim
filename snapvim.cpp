@@ -18,7 +18,7 @@ buf_T* buffer1 = nullptr;
 buf_T* currentBuffer = nullptr;
 SnapVimState* state = nullptr;
 
-void InitSnapVim(char* PasteBuffer)
+void InitSnapVim(HWND hwnd)
 {
     // init vim backend
     vimInit(0, nullptr);
@@ -31,7 +31,8 @@ void InitSnapVim(char* PasteBuffer)
     currentBuffer = buffer0;
 
     state = new SnapVimState();
-    state->PasteBuffer = PasteBuffer;
+    state->PasteBuffer = (char*)ImGui::MemAlloc(BUFFER_SIZE * sizeof(ImWchar));
+    state->hwnd = hwnd;
 
     // global settings
     ImGuiContext& g = *GImGui;
@@ -440,6 +441,40 @@ void CopyToPasteBuffer()
         state->PasteBuffer[buf_size - 1] = '\0'; // Remove the last newline character
         state->PasteBuffer[BUFFER_SIZE - 1] = '\0'; // Ensure null-termination
     }
+}
+
+void PasteTextToPreviousFocus(const char* text) {
+    if (!IsWindow(g_previousFocus))
+        return;
+
+    // activate target window
+    SetForegroundWindow(g_previousFocus);
+
+    // Set clipboard content
+    ImGui::SetClipboardText(text);
+
+    // Simulate Ctrl+V paste
+    INPUT inputs[4] = {};
+
+    // Ctrl down
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_CONTROL;
+
+    // V down
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = 'V';
+
+    // V up
+    inputs[2].type = INPUT_KEYBOARD;
+    inputs[2].ki.wVk = 'V';
+    inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    // Ctrl up
+    inputs[3].type = INPUT_KEYBOARD;
+    inputs[3].ki.wVk = VK_CONTROL;
+    inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(4, inputs, sizeof(INPUT));
 }
 
 }
