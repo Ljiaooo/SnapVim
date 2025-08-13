@@ -39,7 +39,7 @@ void InitSnapVim(HWND hwnd)
     currentBuffer = buffer0;
 
     state = new SnapVimState();
-    state->PasteBuffer = (char*)ImGui::MemAlloc(BUFFER_SIZE * sizeof(ImWchar));
+    state->PasteBuffer = (char*)ImGui::MemAlloc(BUFFER_SIZE * sizeof(char));
     state->hwnd = hwnd;
 
     // global settings
@@ -439,15 +439,15 @@ void CopyToPasteBuffer()
             if (line != NULL)
             {
                 int line_length = ImStrlen((const char*)line);
-                if (buf_size + line_length + 1 >= BUFFER_SIZE) return;
-
-                ImStrncpy(state->PasteBuffer + buf_size, (const char*)line, line_length);
-                buf_size += line_length + 1;
-                state->PasteBuffer[buf_size] = '\n';
+                if (buf_size + line_length + 2 >= BUFFER_SIZE) // +2 for '\n' and '\0'
+                    break;
+                memcpy(state->PasteBuffer + buf_size, (const char*)line, line_length);
+                buf_size += line_length;
+                if (line_no < line_count) state->PasteBuffer[buf_size++] = '\n';
             }
         }
-        state->PasteBuffer[buf_size - 1] = '\0'; // Remove the last newline character
-        state->PasteBuffer[BUFFER_SIZE - 1] = '\0'; // Ensure null-termination
+        state->PasteBuffer[buf_size] = '\0';
+        state->PasteBuffer[BUFFER_SIZE - 1] = '\0';
     }
 }
 
