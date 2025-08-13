@@ -2,10 +2,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 
-#include <cstdio>
-#include <vim.h>
-#include <windows.h>
-#include <lm.h>
 #include "svimconfig.h"
 #include "imgui.h"
 #include "snapvim.h"
