@@ -22,7 +22,6 @@ namespace SnapVim
 struct SnapVimState
 {
     ImVec2 Scroll;
-    bool Edited;
     bool CursorFollow;
     bool HighlightLine;
     float CursorAnim;
@@ -32,13 +31,12 @@ struct SnapVimState
 
     SnapVimState() 
     : Scroll(0.0f, 0.0f),
-      Edited(false),
       CursorFollow(true),
       HighlightLine(true),
       CursorAnim(0.0f),
       BufCapacity(0),
       PasteBuffer(nullptr),
-      hwnd(nullptr) {}
+      hwnd(nullptr){}
 
     void CursorAnimReset() { CursorAnim = -0.3f; };
 };
@@ -50,5 +48,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg);
 ImVec2 CalCursorXAndWidth(ImGuiContext* ctx, char_u* line, int col, int mode);
 void CopyToPasteBuffer();
 void PasteTextToPreviousFocus(const char* text);
+void DisableIME(bool disable);
 
 }

@@ -54,6 +54,8 @@ void InitSnapVim(HWND hwnd)
     style.FramePadding = ImVec2(0, 0);
     style.WindowPadding = ImVec2(0, 10);
     style.ScrollbarSize = 12;
+
+    DisableIME(true);
 }
 
 void DestroySnapVim()
@@ -94,6 +96,10 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     const bool RENDER_SELECTION_WHEN_INACTIVE = false;
     const char* label = "###SnapVim";
     int flags = 0;
+
+    // Disable IME when not in insert mode
+    if ((vimGetMode() & INSERT) != INSERT && ImmGetOpenStatus(ImmGetContext(state->hwnd)))
+        DisableIME(true);
 
     BeginGroup();
     const ImGuiID id = window->GetID(label);
@@ -399,7 +405,7 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
 
     const char* s = (const char*)line;
     const char* cur_pos = s;
-    unsigned int c;
+    unsigned int c = 97; // 'a' init value for empty text
     if ((mode & INSERT) == INSERT) col -= 1;
     while (s < text_end && current_col <= col)
     {
@@ -484,6 +490,15 @@ void PasteTextToPreviousFocus(const char* text) {
 
     SendInput(4, inputs, sizeof(INPUT));
     ShowWindow(state->hwnd, SW_HIDE);
+}
+
+void DisableIME(bool disable)
+{
+    HIMC hIMC = ImmGetContext(state->hwnd);
+    if (hIMC) {
+        ImmSetOpenStatus(hIMC, !disable);
+        ImmReleaseContext(state->hwnd, hIMC);
+    }
 }
 
 }
