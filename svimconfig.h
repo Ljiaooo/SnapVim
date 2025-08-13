@@ -9,7 +9,7 @@
 #define FONT_SIZE 25.0f
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 400
-#define BUFFER_SIZE 10000
+#define BUFFER_SIZE 100000
 #define TRANSPARENT_VALUE 240 
 #define ENGLISH_FONT "JetBrainsMono-Medium.ttf"
 #define CHINESE_FONT "NotoSansSC-Medium.ttf"

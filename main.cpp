@@ -221,10 +221,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     EnableWindowRoundedCorners(hwnd); // Enable rounded corners for the window
     SetLayeredWindowAttributes(hwnd, 0, TRANSPARENT_VALUE, LWA_ALPHA); // Set window transparency (0-255, 255 is fully opaque)
 
-    // allocate text buffer, max 10000 characters
-    g_textBuffer = (char*)ImGui::MemAlloc(10000 * sizeof(ImWchar));
-    memset(g_textBuffer, 0, 10000 * sizeof(ImWchar));
-
     // register hotkey
     if (!RegisterHotKey(hwnd, 1, MOD_CONTROL, VK_SPACE)) {
         MessageBox(hwnd, L"[SnapVim]: RegisterHotKey failed. Maybe the hotkey [Ctrl+Space] is occupied.", L"Error", MB_ICONERROR);
@@ -308,7 +304,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiWindowFlags_NoBackground |
     ImGuiWindowFlags_NoNav;
 
-    SnapVim::InitSnapVim();
+    g_textBuffer = (char*)ImGui::MemAlloc(BUFFER_SIZE * sizeof(ImWchar));
+    SnapVim::InitSnapVim(g_textBuffer);
 
     // Main loop
     bool done = false;
@@ -394,6 +391,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
+    SnapVim::DestroySnapVim();
     UnregisterHotKey(hwnd, 1); // Unregister the hotkey
     return 0;
 }

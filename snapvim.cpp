@@ -24,7 +24,7 @@ buf_T* buffer1 = nullptr;
 buf_T* currentBuffer = nullptr;
 SnapVimState* state = nullptr;
 
-void InitSnapVim()
+void InitSnapVim(char* PasteBuffer)
 {
     // init vim backend
     vimInit(0, nullptr);
@@ -37,6 +37,7 @@ void InitSnapVim()
     currentBuffer = buffer0;
 
     state = new SnapVimState();
+    state->PasteBuffer = PasteBuffer;
 
     // global settings
     ImGuiContext& g = *GImGui;
@@ -50,6 +51,11 @@ void InitSnapVim()
     style.FramePadding = ImVec2(0, 0);
     style.WindowPadding = ImVec2(0, 10);
     style.ScrollbarSize = 12;
+}
+
+void DestroySnapVim()
+{
+    delete state;
 }
 
 void OnKeyPressed(unsigned int key)
@@ -334,7 +340,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     draw_window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(PADDING, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
     draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Max.x - PADDING, frame_bb.Min.y), ImVec2(frame_bb.Max.x, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
 
-    // Draw command line
+    // Draw Command Line
     if ((vimGetMode() & CMDLINE) == CMDLINE)
     {
         char_u* cmdline = vimCommandLineGetText();
@@ -416,6 +422,30 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
         cursor_x = cursor_x > cursor_width ? cursor_x - cursor_width : 0.0f;
     }
     return ImVec2(cursor_x, cursor_width);
+}
+
+void CopyToPasteBuffer()
+{
+    int line_count = vimBufferGetLineCount(currentBuffer);
+    if (line_count > 0)
+    {
+        int buf_size = 0;
+        for (int line_no = 1; line_no <= line_count; ++line_no)
+        {
+            char_u* line = vimBufferGetLine(currentBuffer, (linenr_T)line_no);
+            if (line != NULL)
+            {
+                int line_length = ImStrlen((const char*)line);
+                if (buf_size + line_length + 1 >= BUFFER_SIZE) return;
+
+                ImStrncpy(state->PasteBuffer + buf_size, (const char*)line, line_length);
+                buf_size += line_length + 1;
+                state->PasteBuffer[buf_size] = '\n';
+            }
+        }
+        state->PasteBuffer[buf_size - 1] = '\0'; // Remove the last newline character
+        state->PasteBuffer[BUFFER_SIZE - 1] = '\0'; // Ensure null-termination
+    }
 }
 
 }
