@@ -1,14 +1,8 @@
 /**
  * Not Implemented Features:
- * - vim scrolling
- * - vim search
- * - vim command mode
+ * - vim search highlight
  * - visual mode multi-cursor
- * 
- * 
- * 
- * 
- *
+ * - custom commands for view history / input(:w)
  */
 
 #pragma once
@@ -16,7 +10,7 @@
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 400
 #define BUFFER_SIZE 10000
-#define TRANSPARENT_VALUE 220 
+#define TRANSPARENT_VALUE 240 
 #define ENGLISH_FONT "JetBrainsMono-Medium.ttf"
 #define CHINESE_FONT "NotoSansSC-Medium.ttf"
 

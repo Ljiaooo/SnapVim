@@ -89,7 +89,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     BeginGroup();
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
-    const ImVec2 frame_size = CalcItemSize(ImVec2(size_arg.x - style.WindowPadding.x * 2, size_arg.y - style.WindowPadding.y * 2), CalcItemWidth(), ( g.FontSize * 8.0f) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
+    const ImVec2 frame_size = CalcItemSize(ImVec2(size_arg.x - style.WindowPadding.x * 2, size_arg.y - style.WindowPadding.y), CalcItemWidth(), ( g.FontSize * 8.0f) + style.FramePadding.y * 2.0f); // Arbitrary default of 8 lines high for multi-line
     const ImVec2 total_size = ImVec2(frame_size.x + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), frame_size.y);
 
     const ImRect frame_bb(window->DC.CursorPos, window->DC.CursorPos + frame_size);
@@ -128,7 +128,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     draw_window = g.CurrentWindow; // Child window
     draw_window->DC.NavLayersActiveMaskNext |= (1 << draw_window->DC.NavLayerCurrent); // This is to ensure that EndChild() will display a navigation highlight so we can "enter" into it.
     draw_window->DC.CursorPos += style.FramePadding;
-    inner_size.x -= draw_window->ScrollbarSizes.x;
 
     // Ensure mouse cursor is set even after switching to keyboard/gamepad mode. May generalize further? (#6417)
     bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.ItemFlags | ImGuiItemFlags_NoNavDisableMouseHover);
@@ -147,9 +146,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
 
     float scroll_y = draw_window->Scroll.y;
     buf_T *vimBuf = currentBuffer;
-
-    //const bool init_reload_from_user_buf = (state != NULL && state->WantReloadUserBuf);
-    const bool init_changed_specs = (state != NULL );// state != NULL means its our state.
 
     const bool is_osx = io.ConfigMacOSXBehaviors;
     if (g.ActiveId != id)
@@ -337,6 +333,18 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     // Draw Padding Rectangle
     draw_window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(PADDING, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
     draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Max.x - PADDING, frame_bb.Min.y), ImVec2(frame_bb.Max.x, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
+
+    // Draw command line
+    if ((vimGetMode() & CMDLINE) == CMDLINE)
+    {
+        char_u* cmdline = vimCommandLineGetText();
+        char_u cmdetype = vimCommandLineGetType();
+        char_u* combined = (char_u*)alloca(ImStrlen((const char*)cmdline) + 2);
+        combined[0] = cmdetype;
+        ImStrncpy((char*)combined + 1, (const char*)cmdline, ImStrlen((const char*)cmdline) + 1);
+        draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Min.x, frame_bb.Max.y - g.FontSize + 5), frame_bb.Max, GetColorU32(ImVec4(0.25f, 0.25f, 0.25f, 1.0f)));
+        draw_window->DrawList->AddText(g.Font, g.FontSize - 5, ImVec2(frame_bb.Min.x + PADDING, frame_bb.Max.y - g.FontSize + 5 + style.FramePadding.y), GetColorU32(ImVec4(0.7f, 0.7f, 0.7f, 1.0f)), (const char*)combined, (const char*)combined + ImStrlen((char*)combined), 0.0f, NULL);
+    }
 
     // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
     Dummy(ImVec2(text_size.x, text_size.y + style.FramePadding.y));

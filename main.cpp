@@ -6,8 +6,6 @@
 #include <tchar.h>
 #include <shellapi.h>
 #include <dwmapi.h>
-#include <stdio.h>
-
 #include "snapvim.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -310,8 +308,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     ImGuiWindowFlags_NoBackground |
     ImGuiWindowFlags_NoNav;
 
-
-    // TEST only
     SnapVim::InitSnapVim();
 
     // Main loop
@@ -344,10 +340,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        
-
         SnapVim::RenderSnapVimEditor(g_textBuffer, winWidth, winHeight, window_flags);
-
 
         // Rendering
         ImGui::Render();
