@@ -3,9 +3,7 @@
 #endif
 
 #include "svimconfig.h"
-#include "imgui.h"
 #include "snapvim.h"
-#include "imgui_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
