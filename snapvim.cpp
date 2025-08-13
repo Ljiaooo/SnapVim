@@ -18,12 +18,20 @@ buf_T* buffer1 = nullptr;
 buf_T* currentBuffer = nullptr;
 SnapVimState* state = nullptr;
 
+void OnWriteCallback()
+{
+    CopyToPasteBuffer();
+    PasteTextToPreviousFocus(state->PasteBuffer);
+}
+
+
 void InitSnapVim(HWND hwnd)
 {
     // init vim backend
     vimInit(0, nullptr);
     vimOptionSetInsertSpaces(TRUE);
     vimOptionSetTabSize(2);
+    vimSetWriteRedirectCallback(OnWriteCallback);
 
     // initially create two buffers, one for the current text and one for the history
     buffer1 = vimBufferOpen((char_u*)"", 1, 0);
@@ -475,6 +483,7 @@ void PasteTextToPreviousFocus(const char* text) {
     inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
 
     SendInput(4, inputs, sizeof(INPUT));
+    ShowWindow(state->hwnd, SW_HIDE);
 }
 
 }
