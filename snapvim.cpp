@@ -213,6 +213,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         // Process regular text input (before we check for Return because using some IME will effectively send a Return?)
         // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
         if (Shortcut(ImGuiKey_Escape, 0, id)) vimKey((char_u*)"<Esc>");
+        if (Shortcut(ImGuiMod_Ctrl | ImGuiKey_V, 0, id)) vimKey((char_u*)"<c-v>");
         const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (is_osx && io.KeyCtrl);
         if (io.InputQueueCharacters.Size > 0)
         {
