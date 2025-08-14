@@ -2,8 +2,7 @@
  * Not Implemented Features:
  * - vim search highlight
  * - visual mode multi-cursor
- * - custom commands for view history / input(:w)
- * - redirect :w to paste buffer(add callback)
+ * - runtime configuration
  */
 
 #pragma once
