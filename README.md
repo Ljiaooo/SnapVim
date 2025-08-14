@@ -16,10 +16,14 @@
 - ⚡ **Instant launch with Ctrl+Space** — jump straight into editing from anywhere  
 - 🎯 **Vim-inspired commands** — `:w`, `:wq`, `:write` for quick save and exit  
 - 📋 **Automatic paste** — after saving, SnapVim pastes the edited text into the last active window  
-- 🪶 **Lightweight** — no runtime config persistence, clean and temporary by design  
+- 🪶 **Lightweight** — small footprint, minimal dependencies, and low resource usage
 - 🖥 **Windows platform** — currently only supports Windows
 
 ---
+   1. We intend for SnapVim to be used only for short-term Vim-style editing. For long-term text or code editing, please use the official Vim or other editors like VS Code.
+   2. SnapVim currently supports most native Vim operations in insert, normal, and command modes. Visual mode is not yet implemented.
+   3. SnapVim supports the :bp command to view the previous buffer history, but it can only store one record. Since SnapVim manages buffers internally, buffer-related commands in command mode are not supported.
+
 
 ## 📖 How It Works
 
