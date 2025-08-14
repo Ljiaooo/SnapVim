@@ -18,13 +18,6 @@ buf_T* buffer1 = nullptr;
 buf_T* currentBuffer = nullptr;
 SnapVimState* state = nullptr;
 
-void OnWriteCallback()
-{
-    CopyToPasteBuffer();
-    PasteTextToPreviousFocus(state->PasteBuffer);
-}
-
-
 void InitSnapVim(HWND hwnd)
 {
     // init vim backend
@@ -32,10 +25,11 @@ void InitSnapVim(HWND hwnd)
     vimOptionSetInsertSpaces(TRUE);
     vimOptionSetTabSize(2);
     vimSetWriteRedirectCallback(OnWriteCallback);
+    vimSetBufferPreviousCallback(OnBufferPreviousCallback);
 
     // initially create two buffers, one for the current text and one for the history
-    buffer1 = vimBufferOpen((char_u*)"", 1, 0);
-    buffer0 = vimBufferOpen((char_u*)"", 1, 0);
+    buffer1 = vimBufferOpen((char_u*)"dummy_buffer1", 1, 0);
+    buffer0 = vimBufferOpen((char_u*)"dummy_buffer0", 1, 0);
     currentBuffer = buffer0;
 
     state = new SnapVimState();
@@ -93,10 +87,20 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     ImGuiIO& io = g.IO;
     const ImGuiStyle& style = g.Style;
 
-    const bool RENDER_SELECTION_WHEN_INACTIVE = false;
     const char* label = "###SnapVim";
     int flags = 0;
 
+    if (state->BufferNeedSwitch)
+    {
+        currentBuffer = (currentBuffer == buffer0) ? buffer1 : buffer0;
+        vimBufferSetCurrent(currentBuffer);
+        state->BufferNeedSwitch = false;
+    }
+    if (state->BufferNeedReset)
+    {
+        ResetCurrentBuffer();
+        state->BufferNeedReset = false;
+    }
     // Disable IME when not in insert mode
     if ((vimGetMode() & INSERT) != INSERT && ImmGetOpenStatus(ImmGetContext(state->hwnd)))
         DisableIME(true);
@@ -197,7 +201,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
 
     // Lock the decision of whether we are going to take the path displaying the cursor or selection
     bool render_cursor = (g.ActiveId == id) || (state && user_scroll_active);
-    //bool render_selection = state && (state->HasSelection() || select_all) && (RENDER_SELECTION_WHEN_INACTIVE || render_cursor);
     bool value_changed = false;
     bool validated = false;
 
@@ -261,7 +264,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     cursor_offset.y = cursor_line_no * g.FontSize;
     if (selmin_line_no >= 0)
     {
-        //select_start_offset.x = InputTextCalcTextSize(&g, ImStrbol(selmin_ptr, text_begin), selmin_ptr).x;
         select_start_offset.x = 0;
         select_start_offset.y = selmin_line_no * g.FontSize;
     }
@@ -500,5 +502,29 @@ void DisableIME(bool disable)
         ImmReleaseContext(state->hwnd, hIMC);
     }
 }
+
+void ResetCurrentBuffer()
+{
+    vimKey((char_u*)"<Esc>");
+    vimKey((char_u*)"<Esc>");
+    vimInput((char_u*)"g");
+    vimInput((char_u*)"g");
+    vimInput((char_u*)"d");
+    vimInput((char_u*)"G");
+}
+
+void OnWriteCallback()
+{
+    CopyToPasteBuffer();
+    PasteTextToPreviousFocus(state->PasteBuffer);
+    state->BufferNeedSwitch = true;
+    state->BufferNeedReset = true;
+}
+
+void OnBufferPreviousCallback()
+{
+    state->BufferNeedSwitch = true;
+}
+
 
 }

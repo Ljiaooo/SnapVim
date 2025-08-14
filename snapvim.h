@@ -28,6 +28,8 @@ struct SnapVimState
     int BufCapacity;
     char* PasteBuffer;
     HWND hwnd;
+    bool BufferNeedReset;
+    bool BufferNeedSwitch;
 
     SnapVimState() 
     : Scroll(0.0f, 0.0f),
@@ -36,7 +38,9 @@ struct SnapVimState
       CursorAnim(0.0f),
       BufCapacity(0),
       PasteBuffer(nullptr),
-      hwnd(nullptr){}
+      hwnd(nullptr),
+      BufferNeedReset(false),
+      BufferNeedSwitch(false) {}
 
     void CursorAnimReset() { CursorAnim = -0.3f; };
 };
@@ -49,5 +53,8 @@ ImVec2 CalCursorXAndWidth(ImGuiContext* ctx, char_u* line, int col, int mode);
 void CopyToPasteBuffer();
 void PasteTextToPreviousFocus(const char* text);
 void DisableIME(bool disable);
+void ResetCurrentBuffer();
+void OnWriteCallback();
+void OnBufferPreviousCallback();
 
 }
