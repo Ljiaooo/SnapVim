@@ -58,7 +58,7 @@ SnapVim is built on top of:
 
 ### Build Steps
 ```bash
-git clone --recursive https://github.com/yourusername/snapvim.git
+git clone --recursive https://github.com/Ljiaooo/SnapVim.git
 cd snapvim
 mkdir build && cd build
 
