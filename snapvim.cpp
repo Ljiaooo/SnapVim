@@ -63,15 +63,19 @@ void OnKeyPressed(unsigned int key)
     // handle input
     char utf[5];
     ImTextCharToUtf8(utf, key);
+    int urf_len = strlen(utf);
     if ((vimGetMode() & INSERT) == INSERT)
     {
         vimInput((char_u*)utf);
+        pos_T current_cursor = vimCursorGetPosition();
         for (int cursorIndex = 0; cursorIndex < state->CursorCount; ++cursorIndex)
         {
-            pos_T cursor = state->Cursors[cursorIndex];
+            pos_T &cursor = state->Cursors[cursorIndex];
             vimCursorSetPosition(cursor);
             vimInput((char_u*)utf);
+            cursor.col += urf_len;
         }
+        vimCursorSetPosition(current_cursor);
     }
     else vimInput((char_u*)utf);
 
@@ -218,12 +222,8 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         clear_active_id = true;
 
     // Lock the decision of whether we are going to take the path displaying the cursor or selection
-    bool render_cursor = (g.ActiveId == id) || (state && user_scroll_active);
     bool value_changed = false;
     bool validated = false;
-
-    // Select the buffer to render.
-    //const bool buf_display_from_state = (render_cursor || render_selection || g.ActiveId == id) && state;
 
     // Process mouse inputs and character inputs
     if (g.ActiveId == id)
@@ -290,7 +290,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     // Store text height (note that we haven't calculated text width at all, see GitHub issues #383, #1224)
     text_size = ImVec2(inner_size.x, line_count * g.FontSize);
 
-    if (render_cursor && state->CursorFollow)
+    if (state->CursorFollow)
     {
         // Horizontal scroll, move 1 / 10 of the inner size
         const float scroll_increment_x = inner_size.x * 0.1f;
@@ -326,27 +326,44 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     const ImVec2 draw_scroll = ImVec2(state->Scroll.x - PADDING, 0.0f);
 
     // Draw blinking cursor
-    if (render_cursor)
-    {
-        state->CursorAnim += io.DeltaTime;
-        bool cursor_is_visible = (!g.IO.ConfigInputTextCursorBlink) || (state->CursorAnim <= 0.0f) || ImFmod(state->CursorAnim, 1.20f) <= 0.80f;
-        ImVec2 cursor_screen_pos = ImTrunc(draw_pos + cursor_offset - draw_scroll);
-        ImRect cursor_screen_rect(cursor_screen_pos.x, cursor_screen_pos.y - g.FontSize + 0.5f, cursor_screen_pos.x + 1.0f, cursor_screen_pos.y - 1.5f);
-        if (cursor_is_visible && cursor_screen_rect.Overlaps(clip_rect))
-            draw_window->DrawList->AddRectFilled(cursor_screen_rect.Min, ImVec2(cursor_screen_pos.x + cursor_x_and_width.y, cursor_screen_rect.GetBL().y), GetColorU32(ImGuiCol_InputTextCursor));
+    state->CursorAnim += io.DeltaTime;
+    bool cursor_is_visible = (!g.IO.ConfigInputTextCursorBlink) || (state->CursorAnim <= 0.0f) || ImFmod(state->CursorAnim, 1.20f) <= 0.80f;
+    ImVec2 cursor_screen_pos = ImTrunc(draw_pos + cursor_offset - draw_scroll);
+    ImRect cursor_screen_rect(cursor_screen_pos.x, cursor_screen_pos.y - g.FontSize + 0.5f, cursor_screen_pos.x + 1.0f, cursor_screen_pos.y - 1.5f);
+    if (cursor_is_visible && cursor_screen_rect.Overlaps(clip_rect))
+        draw_window->DrawList->AddRectFilled(cursor_screen_rect.Min, ImVec2(cursor_screen_pos.x + cursor_x_and_width.y, cursor_screen_rect.GetBL().y), GetColorU32(ImGuiCol_InputTextCursor));
 
-        // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
-        // This is required for some backends (SDL3) to start emitting character/text inputs.
-        // As per #6341, make sure we don't set that on the deactivating frame.
-        if (g.ActiveId == id)
+    if ((vimGetMode() & INSERT) == INSERT)
+    {
+        for (int cursorIndex = 0; cursorIndex < state->CursorCount; ++cursorIndex)
         {
-            ImGuiPlatformImeData* ime_data = &g.PlatformImeData; // (this is a public struct, passed to io.Platform_SetImeDataFn() handler)
-            ime_data->WantVisible = true;
-            ime_data->WantTextInput = true;
-            ime_data->InputPos = ImVec2(cursor_screen_pos.x - 1.0f, cursor_screen_pos.y - g.FontSize);
-            ime_data->InputLineHeight = g.FontSize;
-            ime_data->ViewportId = window->Viewport->ID;
+            pos_T cursor = state->Cursors[cursorIndex];
+            int cursor_line_no = cursor.lnum;
+            int cursor_col_no = cursor.col;
+            char_u* line = vimBufferGetLine(vimBuf, cursor_line_no);
+            ImVec2 x_and_width = CalCursorXAndWidth(&g, line, cursor.col, vimGetMode());
+            ImVec2 offset;
+            offset.x = x_and_width.x;
+            offset.y = cursor_line_no * g.FontSize;
+            ImVec2 screen_pos = ImTrunc(draw_pos + offset - draw_scroll);
+            ImRect screen_rect(screen_pos.x, screen_pos.y - g.FontSize + 0.5f, screen_pos.x + 1.0f, screen_pos.y - 1.5f);
+            if (cursor_is_visible && screen_rect.Overlaps(clip_rect))
+                draw_window->DrawList->AddRectFilled(screen_rect.Min, ImVec2(screen_pos.x + x_and_width.y, screen_rect.GetBL().y), GetColorU32(ImGuiCol_InputTextCursor));
         }
+    }
+
+
+    // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
+    // This is required for some backends (SDL3) to start emitting character/text inputs.
+    // As per #6341, make sure we don't set that on the deactivating frame.
+    if (g.ActiveId == id)
+    {
+        ImGuiPlatformImeData* ime_data = &g.PlatformImeData; // (this is a public struct, passed to io.Platform_SetImeDataFn() handler)
+        ime_data->WantVisible = true;
+        ime_data->WantTextInput = true;
+        ime_data->InputPos = ImVec2(cursor_screen_pos.x - 1.0f, cursor_screen_pos.y - g.FontSize);
+        ime_data->InputLineHeight = g.FontSize;
+        ime_data->ViewportId = window->Viewport->ID;
     }
 
     // We test for 'buf_display_max_length' as a way to avoid some pathological cases (e.g. single-line 1 MB string) which would make ImDrawList crash.
