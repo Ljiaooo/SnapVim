@@ -26,6 +26,7 @@ void InitSnapVim(HWND hwnd)
     vimOptionSetTabSize(2);
     vimSetWriteRedirectCallback(OnWriteCallback);
     vimSetBufferPreviousCallback(OnBufferPreviousCallback);
+    vimSetCursorAddCallback(OnCursorAdd);
 
     // initially create two buffers, one for the current text and one for the history
     buffer1 = vimBufferOpen((char_u*)"dummy_buffer1", 1, 0);
@@ -62,7 +63,18 @@ void OnKeyPressed(unsigned int key)
     // handle input
     char utf[5];
     ImTextCharToUtf8(utf, key);
-    vimInput((char_u*)utf);
+    if ((vimGetMode() & INSERT) == INSERT)
+    {
+        vimInput((char_u*)utf);
+        for (int cursorIndex = 0; cursorIndex < state->CursorCount; ++cursorIndex)
+        {
+            pos_T cursor = state->Cursors[cursorIndex];
+            vimCursorSetPosition(cursor);
+            vimInput((char_u*)utf);
+        }
+    }
+    else vimInput((char_u*)utf);
+
     state->CursorFollow = true;
     state->CursorAnimReset();
 }
@@ -101,6 +113,12 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         ResetCurrentBuffer();
         state->BufferNeedReset = false;
     }
+    if (state->CursorCountNeedReset && (vimGetMode() & NORMAL) == NORMAL)
+    {
+        state->CursorCount = 0;
+        state->CursorCountNeedReset = false;
+    }
+
     // Disable IME when not in insert mode
     if ((vimGetMode() & INSERT) != INSERT && ImmGetOpenStatus(ImmGetContext(state->hwnd)))
         DisableIME(true);
@@ -428,7 +446,7 @@ ImVec2 CalCursorXAndWidth(ImGuiContext*ctx, char_u* line, int col, int mode)
 
     if ((mode & INSERT) == INSERT)
         cursor_width = 2.0f;
-    else if ((mode & NORMAL) == NORMAL)
+    else
     {
         cursor_width = baked->GetCharAdvance((ImWchar)c) * scale;
         cursor_x = cursor_x > cursor_width ? cursor_x - cursor_width : 0.0f;
@@ -527,5 +545,12 @@ void OnBufferPreviousCallback()
     state->BufferNeedSwitch = true;
 }
 
+void OnCursorAdd(pos_T cursor)
+{
+    if (state->CursorCount < 1024) {
+        state->Cursors[state->CursorCount++] = cursor;
+        state->CursorCountNeedReset = true;
+    }
+}
 
 }

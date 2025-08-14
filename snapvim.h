@@ -29,6 +29,9 @@ struct SnapVimState
     HWND hwnd;
     bool BufferNeedReset;
     bool BufferNeedSwitch;
+    bool CursorCountNeedReset;
+    int CursorCount;
+    pos_T Cursors[1024]; // Maximum number of cursors
 
     SnapVimState() 
     : Scroll(0.0f, 0.0f),
@@ -39,7 +42,9 @@ struct SnapVimState
       PasteBuffer(nullptr),
       hwnd(nullptr),
       BufferNeedReset(false),
-      BufferNeedSwitch(false) {}
+      BufferNeedSwitch(false),
+      CursorCountNeedReset(false),
+      CursorCount(0) {}
 
     void CursorAnimReset() { CursorAnim = -0.3f; };
 };
@@ -55,5 +60,6 @@ void DisableIME(bool disable);
 void ResetCurrentBuffer();
 void OnWriteCallback();
 void OnBufferPreviousCallback();
+void OnCursorAdd(pos_T cursor);
 
 }
