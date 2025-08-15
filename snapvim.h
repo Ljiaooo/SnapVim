@@ -1,7 +1,6 @@
 /**
  * Not Implemented Features:
  * - vim search highlight
- * - visual mode multi-cursor
  * - runtime configuration
  */
 

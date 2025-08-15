@@ -177,11 +177,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     if (hovered && g.NavHighlightItemUnderNav)
         hovered = false;
 
-
-
-    const bool user_clicked = hovered && io.MouseClicked[0];
-    const bool user_scroll_finish = g.ActiveId == 0 && g.ActiveIdPreviousFrame == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
-    const bool user_scroll_active = g.ActiveId == GetWindowScrollbarID(draw_window, ImGuiAxis_Y);
     bool clear_active_id = false;
     bool select_all = false;
 
@@ -202,8 +197,6 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         const ImGuiKey always_owned_keys[] = { ImGuiKey_LeftArrow, ImGuiKey_RightArrow, ImGuiKey_Enter, ImGuiKey_KeypadEnter, ImGuiKey_Delete, ImGuiKey_Backspace, ImGuiKey_Home, ImGuiKey_End };
         for (ImGuiKey key : always_owned_keys)
             SetKeyOwner(key, id);
-        if (user_clicked)
-            SetKeyOwner(ImGuiKey_MouseLeft, id);
         g.ActiveIdUsingNavDirMask |= (1 << ImGuiDir_Left) | (1 << ImGuiDir_Right);
         SetKeyOwner(ImGuiKey_PageUp, id);
         SetKeyOwner(ImGuiKey_PageDown, id);
@@ -324,6 +317,64 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
 
     // Draw selection
     const ImVec2 draw_scroll = ImVec2(state->Scroll.x - PADDING, 0.0f);
+    if ((vimGetMode() & VISUAL) == VISUAL)
+    {
+        pos_T sel_start, sel_end;
+        vimVisualGetRange(&sel_start, &sel_end);
+        if (sel_start.lnum > sel_end.lnum || (sel_start.lnum == sel_end.lnum && sel_start.col > sel_end.col))
+        {
+            // Swap if selection is backwards
+            pos_T tmp = sel_start;
+            sel_start = sel_end;
+            sel_end = tmp;
+        }
+        for (int line_no = sel_start.lnum; line_no <= sel_end.lnum; ++line_no)
+        {
+            char_u* line = vimBufferGetLine(vimBuf, line_no);
+            if (line == NULL)
+                continue;
+
+            ImRect screen_rect;
+            if (vimVisualGetType() == Ctrl_V)
+            {
+                ImVec2 start_x_and_width = CalCursorXAndWidth(&g, line, sel_start.col, vimGetMode());
+                ImVec2 end_x_and_width = CalCursorXAndWidth(&g, line, sel_end.col, vimGetMode());
+                // swap if end is before start
+                if (end_x_and_width.x < start_x_and_width.x)
+                {
+                    ImVec2 tmp = start_x_and_width;
+                    start_x_and_width = end_x_and_width;
+                    end_x_and_width = tmp;
+                }
+                ImVec2 start_offset = ImVec2(start_x_and_width.x, (line_no - 1) * g.FontSize);
+                ImVec2 end_offset = ImVec2(end_x_and_width.x, line_no * g.FontSize);
+                ImVec2 screen_pos_start = ImTrunc(draw_pos + start_offset - draw_scroll);
+                ImVec2 screen_pos_end = ImTrunc(draw_pos + end_offset - draw_scroll);
+                screen_rect = ImRect(screen_pos_start.x, screen_pos_start.y + 0.5f, screen_pos_end.x + end_x_and_width.y, screen_pos_end.y - 1.5f);
+            }
+            else if (vimVisualGetType() == 'V')
+            {
+                ImVec2 end_x_and_width = CalCursorXAndWidth(&g, line, strlen((const char*)line), vimGetMode());
+                ImVec2 end_offset = ImVec2(end_x_and_width.x, (line_no - 1) * g.FontSize);
+                ImVec2 screen_pos = ImTrunc(draw_pos + end_offset - draw_scroll);
+                screen_rect = ImRect(0.0f, screen_pos.y + 0.5f, screen_pos.x + end_x_and_width.y, screen_pos.y + g.FontSize - 1.5f);
+            }
+            else if (vimVisualGetType() == 'v')
+            {
+                int start_col = (line_no == sel_start.lnum) ? sel_start.col : 0;
+                int end_col = (line_no == sel_end.lnum) ? sel_end.col : strlen((const char*)line);
+                ImVec2 start_x_and_width = CalCursorXAndWidth(&g, line, start_col, vimGetMode());
+                ImVec2 end_x_and_width = CalCursorXAndWidth(&g, line, end_col, vimGetMode());
+                ImVec2 start_offset = ImVec2(start_x_and_width.x, (line_no - 1) * g.FontSize);
+                ImVec2 end_offset = ImVec2(end_x_and_width.x, line_no * g.FontSize);
+                ImVec2 screen_pos_start = ImTrunc(draw_pos + start_offset - draw_scroll);
+                ImVec2 screen_pos_end = ImTrunc(draw_pos + end_offset - draw_scroll);
+                screen_rect = ImRect(screen_pos_start.x, screen_pos_start.y + 0.5f, screen_pos_end.x + end_x_and_width.y, screen_pos_end.y - 1.5f);
+            }
+            if (screen_rect.Overlaps(clip_rect))
+                draw_window->DrawList->AddRectFilled(screen_rect.Min, screen_rect.Max, SELECTION_COLOR);
+        }
+    }
 
     // Draw blinking cursor
     state->CursorAnim += io.DeltaTime;
