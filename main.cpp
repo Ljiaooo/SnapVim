@@ -269,40 +269,6 @@ static void ApplyConfig()
 
     if (g_hwnd)
         SetLayeredWindowAttributes(g_hwnd, 0, (BYTE)g_config.TransparentValue, LWA_ALPHA);
-
-    if (g_config.NeedsFontRebuild)
-    {
-        WaitForLastSubmittedFrame();
-
-        ImGuiIO& io = ImGui::GetIO();
-        io.Fonts->Clear();
-
-        float fontSize = g_config.FontSize * g_mainScale;
-
-        ImFontConfig config_en;
-        config_en.MergeMode = false;
-        char* localAppData = nullptr;
-        _dupenv_s(&localAppData, nullptr, "LOCALAPPDATA");
-
-        char userFontPath[MAX_PATH];
-        snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\%s", localAppData, g_config.EnglishFont.c_str());
-        ImFont* font = io.Fonts->AddFontFromFileTTF(userFontPath, fontSize, &config_en, io.Fonts->GetGlyphRangesDefault());
-
-        ImFontConfig config_zh;
-        config_zh.MergeMode = true;
-        snprintf(userFontPath, MAX_PATH, "%s\\Microsoft\\Windows\\Fonts\\%s", localAppData, g_config.ChineseFont.c_str());
-        io.Fonts->AddFontFromFileTTF(userFontPath, fontSize, &config_zh, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-
-        if (!font)
-            font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", fontSize, &config_en, io.Fonts->GetGlyphRangesDefault());
-
-        free(localAppData);
-
-        ImGui_ImplDX12_InvalidateDeviceObjects();
-        ImGui_ImplDX12_CreateDeviceObjects();
-
-        g_config.NeedsFontRebuild = false;
-    }
 }
 
 // --- Feature 1: clipboard-based text grab ---
@@ -893,6 +859,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
             ImGuiIO& rebuildIO = ImGui::GetIO();
             rebuildIO.Fonts->Clear();
+
+            ImGui::GetStyle().FontSizeBase = g_config.FontSize;
 
             float fs = g_config.FontSize * g_mainScale;
             ImFontConfig cfg_en;
