@@ -57,6 +57,7 @@ void CopyToPasteBuffer();
 void PasteTextToPreviousFocus(const char* text);
 void DisableIME(bool disable);
 void ResetCurrentBuffer();
+void LoadTextIntoBuffer(const char* text);
 void OnWriteCallback();
 void OnBufferPreviousCallback();
 void OnCursorAdd(pos_T cursor);
