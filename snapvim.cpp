@@ -3,7 +3,10 @@
 #endif
 
 #include "svimconfig.h"
+#include "runtime_config.h"
 #include "snapvim.h"
+#include <vector>
+#include <string>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,9 +46,10 @@ void InitSnapVim(HWND hwnd)
     io.ConfigNavEscapeClearFocusItem = false;
     io.ConfigNavEscapeClearFocusWindow = false;
     ImGuiStyle& style = g.Style;
-    style.Colors[ImGuiCol_FrameBg] = BACKGROUND_COLOR;
-    style.Colors[ImGuiCol_InputTextCursor] = CURSOR_COLOR;
-    style.Colors[ImGuiCol_ScrollbarBg] = SCROLLBAR_BG_COLOR;
+    style.Colors[ImGuiCol_FrameBg] = g_config.BackgroundColor;
+    style.Colors[ImGuiCol_InputTextCursor] = g_config.CursorColor;
+    style.Colors[ImGuiCol_ScrollbarBg] = g_config.ScrollbarBgColor;
+    style.Colors[ImGuiCol_Text] = g_config.FontColor;
     style.FramePadding = ImVec2(0, 0);
     style.WindowPadding = ImVec2(0, 10);
     style.ScrollbarSize = 12;
@@ -287,7 +291,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     {
         // Horizontal scroll, move 1 / 10 of the inner size
         const float scroll_increment_x = inner_size.x * 0.1f;
-        const float visible_width = inner_size.x - style.FramePadding.x - 2 * PADDING;
+        const float visible_width = inner_size.x - style.FramePadding.x - 2 * g_config.Padding;
         if (cursor_offset.x < state->Scroll.x)
             state->Scroll.x = IM_TRUNC(ImMax(0.0f, cursor_offset.x - scroll_increment_x));
         else if (cursor_offset.x - visible_width >= state->Scroll.x)
@@ -309,14 +313,14 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     // Draw hightlight line
     if (state->HighlightLine)
     {
-        ImVec2 highlight_line_pos = ImTrunc(draw_pos + ImVec2(PADDING, (cursor_line_no - 1) * g.FontSize));
-        ImRect highlight_line_rect(highlight_line_pos.x, highlight_line_pos.y, highlight_line_pos.x + inner_size.x - 2 * PADDING, highlight_line_pos.y + g.FontSize - 1.5f);
+        ImVec2 highlight_line_pos = ImTrunc(draw_pos + ImVec2(g_config.Padding, (cursor_line_no - 1) * g.FontSize));
+        ImRect highlight_line_rect(highlight_line_pos.x, highlight_line_pos.y, highlight_line_pos.x + inner_size.x - 2 * g_config.Padding, highlight_line_pos.y + g.FontSize - 1.5f);
         if (highlight_line_rect.Overlaps(clip_rect))
-            draw_window->DrawList->AddRectFilled(highlight_line_rect.Min, highlight_line_rect.Max, HIGHLIGHT_LINE_COLOR);
+            draw_window->DrawList->AddRectFilled(highlight_line_rect.Min, highlight_line_rect.Max, GetColorU32(g_config.HighlightLineColor));
     }
 
     // Draw selection
-    const ImVec2 draw_scroll = ImVec2(state->Scroll.x - PADDING, 0.0f);
+    const ImVec2 draw_scroll = ImVec2(state->Scroll.x - g_config.Padding, 0.0f);
     if ((vimGetMode() & VISUAL) == VISUAL)
     {
         pos_T sel_start, sel_end;
@@ -372,7 +376,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
                 screen_rect = ImRect(screen_pos_start.x, screen_pos_start.y + 0.5f, screen_pos_end.x + end_x_and_width.y, screen_pos_end.y - 1.5f);
             }
             if (screen_rect.Overlaps(clip_rect))
-                draw_window->DrawList->AddRectFilled(screen_rect.Min, screen_rect.Max, SELECTION_COLOR);
+                draw_window->DrawList->AddRectFilled(screen_rect.Min, screen_rect.Max, GetColorU32(g_config.SelectionColor));
         }
     }
 
@@ -435,8 +439,8 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
     }
 
     // Draw Padding Rectangle
-    draw_window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(PADDING, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
-    draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Max.x - PADDING, frame_bb.Min.y), ImVec2(frame_bb.Max.x, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
+    draw_window->DrawList->AddRectFilled(frame_bb.Min, ImVec2(g_config.Padding, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
+    draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Max.x - g_config.Padding, frame_bb.Min.y), ImVec2(frame_bb.Max.x, frame_bb.Max.y), GetColorU32(ImGuiCol_FrameBg));
 
     // Draw Command Line
     if ((vimGetMode() & CMDLINE) == CMDLINE)
@@ -447,7 +451,7 @@ bool SnapVimEditor(char* buf, const ImVec2& size_arg)
         combined[0] = cmdetype;
         ImStrncpy((char*)combined + 1, (const char*)cmdline, ImStrlen((const char*)cmdline) + 1);
         draw_window->DrawList->AddRectFilled(ImVec2(frame_bb.Min.x, frame_bb.Max.y - g.FontSize + 5), frame_bb.Max, GetColorU32(ImVec4(0.25f, 0.25f, 0.25f, 1.0f)));
-        draw_window->DrawList->AddText(g.Font, g.FontSize - 5, ImVec2(frame_bb.Min.x + PADDING, frame_bb.Max.y - g.FontSize + 5 + style.FramePadding.y), GetColorU32(ImVec4(0.7f, 0.7f, 0.7f, 1.0f)), (const char*)combined, (const char*)combined + ImStrlen((char*)combined), 0.0f, NULL);
+        draw_window->DrawList->AddText(g.Font, g.FontSize - 5, ImVec2(frame_bb.Min.x + g_config.Padding, frame_bb.Max.y - g.FontSize + 5 + style.FramePadding.y), GetColorU32(ImVec4(0.7f, 0.7f, 0.7f, 1.0f)), (const char*)combined, (const char*)combined + ImStrlen((char*)combined), 0.0f, NULL);
     }
 
     // For focus requests to work on our multiline we need to ensure our child ItemAdd() call specifies the ImGuiItemFlags_Inputable (see #4761, #7870)...
@@ -598,6 +602,47 @@ void ResetCurrentBuffer()
     vimInput((char_u*)"g");
     vimInput((char_u*)"d");
     vimInput((char_u*)"G");
+}
+
+void LoadTextIntoBuffer(const char* text)
+{
+    if (!text || text[0] == '\0') return;
+
+    vimKey((char_u*)"<Esc>");
+    vimKey((char_u*)"<Esc>");
+
+    std::vector<std::string> lineStrings;
+    const char* start = text;
+    const char* p = text;
+    while (*p)
+    {
+        if (*p == '\n')
+        {
+            lineStrings.emplace_back(start, p);
+            start = p + 1;
+        }
+        else if (*p == '\r')
+        {
+            lineStrings.emplace_back(start, p);
+            if (*(p + 1) == '\n') ++p;
+            start = p + 1;
+        }
+        ++p;
+    }
+    if (start <= p)
+        lineStrings.emplace_back(start, p);
+
+    std::vector<char_u*> lines;
+    lines.reserve(lineStrings.size());
+    for (auto& s : lineStrings)
+        lines.push_back((char_u*)s.c_str());
+
+    vimBufferSetLines(currentBuffer, 0, -1, lines.data(), (int)lines.size());
+
+    pos_T topPos = {1, 0, 0};
+    vimCursorSetPosition(topPos);
+    state->Scroll = ImVec2(0, 0);
+    state->CursorFollow = true;
 }
 
 void OnWriteCallback()
