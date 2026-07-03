@@ -319,13 +319,6 @@ static std::string GrabTextFromActiveWindow(HWND foregroundWnd)
     return ReadClipboardText();
 }
 
-static void ClearActiveWindowContent(HWND foregroundWnd)
-{
-    if (!foregroundWnd || GetForegroundWindow() != foregroundWnd)
-        return;
-    SendKeyCombo(VK_DELETE, false);  // Delete
-}
-
 // --- Feature 2: native Win32 settings dialog ---
 
 static void ReadSettingsFromDialog(HWND dlg)
@@ -1233,8 +1226,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 g_grabbedText = GrabTextFromActiveWindow(g_previousFocus);
                 g_hasGrabbedText = !g_grabbedText.empty();
-                if (g_hasGrabbedText)
-                    ClearActiveWindowContent(g_previousFocus);
 
                 ShowWindow(hWnd, SW_SHOW);
                 SetForegroundWindow(hWnd);
